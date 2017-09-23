@@ -39,7 +39,10 @@ struct Command deserialise(char *data) {
     command.operation = *operation_ptr;
     command.key_size = *key_size_ptr;
     command.value_size = *value_size_ptr;
+    command.key = kmalloc(sizeof(char) * (command.key_size - 1), GFP_KERNEL);
+    command.value = kmalloc(sizeof(char) * (command.value_size - 1), GFP_KERNEL);
     memcpy(command.key, key_ptr, command.key_size);
     memcpy(command.value, value_ptr, command.value_size);
     return command;
 };
+
