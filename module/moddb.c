@@ -11,13 +11,13 @@ MODULE_VERSION("0.1");
 
 static int __init database_init(void)
 {
-	printk(KERN_DEBUG "moddb: module installed\n");
-	return 0;
+  printk(KERN_DEBUG "moddb: module installed\n");
+  return 0;
 }
 
 static void __exit database_exit(void)
 {
-	printk(KERN_DEBUG "moddb: module removed\n");
+  printk(KERN_DEBUG "moddb: module removed\n");
 }
 
 module_init(database_init);
