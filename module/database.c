@@ -40,7 +40,7 @@ int database_init(void) {
   if (rhashtable_init(&database.table, &params))
     return DB_INIT_RHASHTABLE;
 
-  spinlock_init(&database.lock);
+  spin_lock_init(&database.lock);
   return SUCCESS;
 }
 
@@ -59,7 +59,7 @@ void database_rhashtable_cleanup(void *ptr, void *arg) {
     next = rcu_access_pointer(entry->next);
     /* TODO free key and data. */
     kfree(entry->key);
-    kfree(entry->value);
+    kfree(entry->data);
     kfree_rcu(entry, rcu);
     entry = next;
   }
@@ -72,21 +72,21 @@ int database_key_compare(struct rhashtable_compare_arg *arg, const void *obj) {
 
 int database_insert(char *key, char *value, size_t length) {
   struct rhash_head *head;
-  int err;
+  //int err;
 
-  spin_lock_lock(&database.lock);
+  //spin_lock_lock(&database.lock);
 
-  head = rhashtable_lookup_fast(&database.table, key, params);
+  //head = rhashtable_lookup_fast(&database.table, key, params);
 
   if (!head) {
 
     /* Insert a new element. */
     /* TODO create new entry. */
-    err = rhashtable_insert_fast(&database.rhash, &entry.rhash, params);
+    //err = rhashtable_insert_fast(&database.rhash, &entry.rhash, params);
   } else {
   }
 
-  spinlock_unlock(&database.lock);
+  //spin_lock_unlock(&database.lock);
   return 0;
 }
 

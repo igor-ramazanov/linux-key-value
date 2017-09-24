@@ -18,7 +18,7 @@ void command_free(command_t command) {
 }
 
 char *command_serialize(command_t command) {
-    char *data = malloc((size_t) command_size(command));
+    char *data = (char *) malloc(command_size(command));
     serialize(command, data);
     return data;
 }

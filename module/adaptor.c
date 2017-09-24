@@ -74,9 +74,11 @@ void adaptor_recv(struct sk_buff *skb) {
 
   pid = nlh->nlmsg_pid;
 
+  msg_size = 0;
   skb_out = nlmsg_new(msg_size, 0);
   nlh = (struct nlmsghdr *)kmalloc(NLMSG_SPACE(command_size(&response)), GFP_KERNEL);
   nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);
+  nlh->nlmsg_len = NLMSG_SPACE(command_size(&response));
   NETLINK_CB(skb_out).dst_group = 0;
   memcpy(nlmsg_data(nlh), serialized, msg_size);
 
