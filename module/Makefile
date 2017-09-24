@@ -1,5 +1,5 @@
-obj-m	+=	moddb.o
-obj-m	+=	command.o
+obj-m		+=	moddb.o
+moddb-y		:=	main.o database.o command.o
 
 all :
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

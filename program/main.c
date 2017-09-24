@@ -125,7 +125,7 @@ int main() {
     recvmsg(sock_fd, &msg, 0);
     int len = NLMSG_PAYLOAD(nlh, 0);
     char * buff = malloc(len);
-    struct command* cmd;
+    struct command* cmd = (struct command *) malloc(sizeof(struct command));
     deserialise_command(cmd, buff);
 
     printf("%s\n", cmd->key);

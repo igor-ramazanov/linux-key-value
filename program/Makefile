@@ -1,8 +1,8 @@
 PROG	=	test
 OBJS	=	main.o
 CC	=	gcc
-CFLAGS	=	-Wall -pedantic
-LDFLAGS	=	-pthread
+CFLAGS	=	-Wall -pedantic -ggdb3
+LDFLAGS	=	-pthread -ggdb3
 
 all : $(PROG)
 
