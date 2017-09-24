@@ -42,13 +42,22 @@ void adaptor_free(void) {
 }
 
 void adaptor_send(int pid, int seq) {
-  char *msg = "Hello!";
-  int msg_size = strlen(msg) + 1;
-  struct sk_buff *skb = nlmsg_new(msg_size, GFP_KERNEL);
-  struct nlmsghdr *nlh = nlmsg_put(skb, pid, seq, 0x20, msg_size, 0);
-  memcpy(nlmsg_data(nlh), msg, msg_size);
-  int e = nlmsg_unicast(adaptor.socket, skb, pid);
-  printk(KERN_EMERG "RETURN CODE: %d\n", e);
+  command_t command = command_new();
+  command->operation = 0;
+  command->key = "hello from kernel!";
+  command->value = "I'm the value from the kernel";
+  command->key_size = (int) (strlen(command->key) + 1);
+  command->value_size = (int) (strlen(command->value) + 1);
+  char * serialized = command_serialize(command);
+  int msg_size = command_size(command);
+  struct sk_buff *skb = nlmsg_new(NLMSG_SPACE(msg_size), GFP_KERNEL);
+  skb->len = NLMSG_SPACE(msg_size);
+  struct nlmsghdr *nlh = (struct nlmsghdr *) skb->data;
+  nlh->nlmsg_pid = 0;
+  nlh->nlmsg_flags = 0;
+  nlh->nlmsg_type = 0x20;
+  memcpy(NLMSG_DATA(nlh), serialized, msg_size);
+  netlink_unicast(adaptor.socket, skb, pid, MSG_WAITALL);
 }
 
 void adaptor_recv(struct sk_buff *skb) {
@@ -59,11 +68,8 @@ void adaptor_recv(struct sk_buff *skb) {
   int type = nl->nlmsg_type;
 
   command_t request = command_deserialize(payload);
-  printk(KERN_EMERG "FROM USER - Type:         %d\n", type);
   printk(KERN_EMERG "FROM USER - Operation:    %d\n", request->operation);
-  printk(KERN_EMERG "FROM USER - Key size:     %d\n", request->key_size);
   printk(KERN_EMERG "FROM USER - Key:          %s\n", request->key);
-  printk(KERN_EMERG "FROM USER - Value size:   %d\n", request->value_size);
   printk(KERN_EMERG "FROM USER - Value:        %s\n", request->value);
   command_free(request);
 

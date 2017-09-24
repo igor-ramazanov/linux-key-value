@@ -18,6 +18,8 @@ static struct client client;
 
 void client_send_request(struct command *request);
 
+void client_receive_msg();
+
 int client_init() {
     client.sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
     if (client.sock_fd < 0)
@@ -26,6 +28,7 @@ int client_init() {
     memset(&client.src_addr, 0, sizeof(client.src_addr));
     client.src_addr.nl_family = AF_NETLINK;
     client.src_addr.nl_pid = getpid();
+    client.src_addr.nl_groups = 0;
 
     bind(client.sock_fd, (struct sockaddr *) &client.src_addr, sizeof(client.src_addr));
     perror("bind");
@@ -47,11 +50,11 @@ void client_send_request(struct command *request) {
     size_t msg_size = NLMSG_SPACE(command_size(request));
 
 
-    struct nlmsghdr *nlh = (struct nlmsghdr *) malloc(sizeof(struct nlmsghdr));
-    memset(nlh, 0, sizeof(struct nlmsghdr));
+    struct nlmsghdr *nlh = (struct nlmsghdr *) malloc(NLMSG_SPACE(msg_size));
+    memset(nlh, 0, NLMSG_SPACE(msg_size));
     nlh->nlmsg_seq = 0;
     nlh->nlmsg_type = 0x31;
-    nlh->nlmsg_len = msg_size;
+    nlh->nlmsg_len = NLMSG_SPACE(msg_size);
     nlh->nlmsg_pid = getpid();
     nlh->nlmsg_flags = 0;
 
@@ -92,31 +95,20 @@ void client_get(char *key) {
     request->value_size = (int) (strlen(request->value) + 1);
 
     client_send_request(request);
+    client_receive_msg();
+}
 
-    int len;
+void client_receive_msg() {
     char buf[4096];
-    struct iovec iov = {buf, sizeof(buf)};
+    struct iovec iov = { buf, sizeof(buf) };
     struct sockaddr_nl sa;
-    struct msghdr msg ={&sa, sizeof(sa), &iov, 1, NULL, 0, 0};
+    struct msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
     struct nlmsghdr *nh;
 
-    len = (int) recvmsg(client.sock_fd, &msg, 0);
-
-    for (nh = (struct nlmsghdr *) buf; NLMSG_OK (nh, len);
-         nh = NLMSG_NEXT (nh, len)) {
-        /* The end of multipart message. */
-        printf("MESSAGE TYPE: %d\n", nh->nlmsg_type);
-
-        if (nh->nlmsg_type == NLMSG_DONE) {
-            printf("DONE");
-            return;
-        }
-
-        if (nh->nlmsg_type == NLMSG_ERROR) {
-            printf("ERROR");
-            return;;
-        }
-        char * data = NLMSG_DATA(nh);
-        printf("DATA: %s\n", data);
-    }
+    recvmsg(client.sock_fd, &msg, 0);
+    nh = (struct nlmsghdr *) buf;
+    char * payload = NLMSG_DATA(nh);
+    command_t command = command_deserialize(payload);
+    printf("FROM KERNEL - Key: %s\n", command->key);
+    printf("FROM KERNEL - Value: %s\n", command->value);
 }
