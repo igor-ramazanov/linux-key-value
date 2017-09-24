@@ -8,6 +8,7 @@
 #include <net/sock.h>
 #include <linux/skbuff.h>
 #include <linux/netlink.h>
+#include <linux/rcupdate.h>
 #include <linux/rhashtable.h>
 #include <linux/string.h>
 #include <linux/slab.h>
@@ -17,6 +18,14 @@
 #define NETLINK_USER 31
 #endif
 
+struct db_entry {
+	char *key;
+	void *value;
+	size_t length;
+	struct rhash_head head;
+	struct db_entry __rcu *next;
+	struct rcu_head rcu;
+};
 
 // @formatter:off
 MODULE_LICENSE("GPL");
@@ -27,15 +36,22 @@ MODULE_AUTHOR("Harendarczyk Bastien<ens17bhk@cs.umu.se>");
 MODULE_VERSION("0.1");
 // @formatter:on
 
-static int test_hash(const char *, int, char *);
 
-static void print_hash(const char *);
-
-static const char *test_string = "Hello, World!";
-static char hash_result[SHA256_DIGEST_SIZE];
-
+static int db_key_compare(struct rhashtable_compare_arg *arg, const void *obj);
+static void db_cleanup(void *ptr, void *arg);
 
 static struct sock *nlsk = NULL;
+static struct rhashtable table;
+static const struct rhashtable_params params = {
+	.nelem_hint = 1024,
+	.head_offset = offsetof(struct db_entry, head),
+	.key_offset = offsetof(struct db_entry, key),
+	.key_len = sizeof(char *),
+	.max_size = 1048576,
+	.min_size = 256,
+	.automatic_shrinking = true,
+	.obj_cmpfn = db_key_compare
+};
 
 static void proceed(char *payload, int len) {
   struct command *a = kmalloc(len, GFP_KERNEL);
@@ -95,9 +111,6 @@ static int __init database_init(void)
     return -10;
   }
 
-  test_hash(test_string, strlen(test_string), hash_result);
-  print_hash(hash_result);
-
   return 0;
 }
 
@@ -106,6 +119,30 @@ static void __exit database_exit(void)
   netlink_kernel_release(nlsk);
 }
 
+int db_key_compare(struct rhashtable_compare_arg *arg, const void *obj)
+{
+	const struct db_entry *entry = (const struct db_entry *) obj;
+	return strcmp((const char *) arg->key, entry->key);
+}
+
+void db_cleanup(void *ptr, void *arg)
+{
+	struct db_entry *entry;
+	struct db_entry *next;
+	
+	entry = (struct db_entry *) ptr;
+
+	while (entry) {
+		next = rcu_access_pointer(entry->next);
+		kfree_rcu(entry, rcu);
+		entry = next;
+	}
+}
+
+module_init(database_init);
+module_exit(database_exit);
+
+/* Keeping just in case, for now.
 static int test_hash(const char *string, int length, char *result) {
   struct shash_desc *desc = kmalloc(sizeof(struct shash_desc), GFP_KERNEL);
   if (!desc) {
@@ -130,17 +167,4 @@ static int test_hash(const char *string, int length, char *result) {
   kfree(desc);
   return 0;
 }
-
-static void print_hash(const char *hash) {
-  char string[2 * SHA256_DIGEST_SIZE + 1];
-  int i;
-
-  memset(string, 0, 2 * SHA256_DIGEST_SIZE + 1);
-  for (i = 0; i < SHA256_DIGEST_SIZE; i++)
-    snprintf(string + 2 * i, 2, "%02x", hash[i]);
-
-  printk(KERN_EMERG "0x%s\n", string);
-}
-
-module_init(database_init);
-module_exit(database_exit);
+*/
