@@ -9,18 +9,19 @@
 #include <linux/rcupdate.h>
 #include <linux/rhashtable.h>
 #include <linux/slab.h>
+#include <linux/spinlock.h>
 #include "command.h"
 #include "database.h"
 #include "error_code.h"
 
 /* "Private member functions". */
 static void database_rhashtable_cleanup(void *, void *);
-static int database_has_key(const char *);
 static int database_key_compare(struct rhashtable_compare_arg *, const void *);
 
 struct database {
   struct rhashtable table;
   struct rhashtable_params params;
+  spinlock_t lock;
 };
 
 struct database_entry {
@@ -46,23 +47,18 @@ static const struct rhashtable_params params = {
 static struct database database;
 
 int database_init(void) {
+
   /* Initialize the rhashtable. */
   if (rhashtable_init(&database.table, &params))
     return DB_INIT_RHASHTABLE;
 
+  spin_lock_init(&database.lock);
   return SUCCESS;
 }
 
-/*
- * TODO Persistent storage before exit (maybe called from moddb.c?)
- */
 void database_free(void) {
+  /* No destroying of the lock necessary? */
   rhashtable_free_and_destroy(&database.table, database_rhashtable_cleanup, 0);
-}
-
-int database_key_compare(struct rhashtable_compare_arg *arg, const void *obj) {
-  struct database_entry *entry = (struct database_entry *) obj;
-  return strcmp(entry->key, arg->key);
 }
 
 void database_rhashtable_cleanup(void *ptr, void *arg) {
@@ -73,30 +69,34 @@ void database_rhashtable_cleanup(void *ptr, void *arg) {
 
   while (entry) {
     next = rcu_access_pointer(entry->next);
+    /* TODO free key and data. */
     kfree_rcu(entry, rcu);
     entry = next;
   }
 }
 
+int database_key_compare(struct rhashtable_compare_arg *arg, const void *obj) {
+  struct database_entry *entry = (struct database_entry *) obj;
+  return strcmp(entry->key, arg->key);
+}
+
 int database_insert(char *key, char *value, size_t length) {
-  /* FIXME atomic context required. */
+  return 0;
+}
 
-  struct rhash_head *head;
-  head = rhashtable_lookup_fast(&database.table, key, params);
-
-  if (!head) {
-
-    /* Insert a new element. */
-  } else {
-  }
+int database_lookup(char *key, char **value, size_t *length) {
+  *value = NULL;
+  *length = 0;
+  return 0;
 }
 
 inline int database_has_key(const char *key) {
   /* FIXME make sure we hold RCU lock here. */
   /* FIXME this only finds the first element in the list. */
-  return (rhashtable_lookup_fast(&database.table, key, params) != NULL);
+  return 0;
 }
 
 /* TODO actual code here. */
-void database_save(void) {
+int database_save(void) {
+  return 0;
 }

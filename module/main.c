@@ -6,6 +6,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include "database.h"
 #include "error_code.h"
 #include "adaptor.h"
 
