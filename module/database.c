@@ -20,6 +20,7 @@
 static void database_recv(struct sk_buff *);
 static void database_proceed(char *, int);
 static void database_rhashtable_cleanup(void *, void *);
+static int database_has_key(const char *);
 static int database_key_compare(struct rhashtable_compare_arg *, const void *);
 
 struct database {
@@ -142,6 +143,25 @@ void database_rhashtable_cleanup(void *ptr, void *arg) {
     kfree_rcu(entry, rcu);
     entry = next;
   }
+}
+
+int database_insert(char *key, char *value, size_t length) {
+  /* FIXME atomic context required. */
+
+  struct rhash_head *head;
+  head = rhashtable_lookup_fast(&database.table, key, params);
+
+  if (!head) {
+
+    /* Insert a new element. */
+  } else {
+  }
+}
+
+inline int database_has_key(const char *key) {
+  /* FIXME make sure we hold RCU lock here. */
+  /* FIXME this only finds the first element in the list. */
+  return (rhashtable_lookup_fast(&database.table, key, params) != NULL);
 }
 
 /* TODO actual code here. */
