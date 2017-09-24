@@ -7,7 +7,8 @@ void serialize(command_t, char *);
 void deserialize(command_t, char *);
 
 command_t command_new(void) {
-    command_t command = (command_t) malloc(sizeof(struct command));
+    command_t command;
+    command = (command_t) malloc(sizeof(struct command));
     return command;
 }
 
@@ -18,7 +19,8 @@ void command_free(command_t command) {
 }
 
 char *command_serialize(command_t command) {
-    char *data = malloc((size_t) command_size(command));
+    char *data;
+    data = malloc((size_t) command_size(command));
     serialize(command, data);
     return data;
 }
@@ -53,7 +55,8 @@ void serialize(command_t command, char *data) {
 };
 
 command_t command_deserialize(char *data) {
-    command_t command = command_new();
+    command_t command;
+    command = command_new();
     deserialize(command, data);
     return command;
 }

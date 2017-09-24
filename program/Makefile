@@ -1,7 +1,6 @@
 PROG	=	test
 OBJS	=	main.o client.o command.o
 CC	=	gcc
-CFLAGS	=	-Wall -pedantic -ggdb3
 LDFLAGS	=	-pthread -ggdb3
 
 all : $(PROG)
