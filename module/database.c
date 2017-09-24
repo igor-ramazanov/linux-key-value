@@ -90,7 +90,7 @@ int database_lookup(char *key, char **value, size_t *length) {
   return 0;
 }
 
-inline int database_has_key(const char *key) {
+int database_has_key(const char *key) {
   /* FIXME make sure we hold RCU lock here. */
   /* FIXME this only finds the first element in the list. */
   return 0;
