@@ -1,48 +1,61 @@
-#include <linux/string.h>
 #include <linux/slab.h>
-
-struct Command {
-    //0 - Set, 1 - Get
-    char operation;
-    int key_size;
-    int value_size;
-    char *key;
-    char *value;
+#include <linux/string.h>
+struct command {
+  //0 - Set, 1 - Get
+  char operation;
+  int key_size;
+  int value_size;
+  char *key;
+  char *value;
 };
 
-char *serialise(struct Command *command) {
-    char *serialised = kmalloc(sizeof(*command), GFP_KERNEL);
+void serialise_command(struct command *command, char *data) {
+  *data = command->operation;
+  data++;
 
-    char *operation_ptr = serialised;
-    int *key_size_ptr = (int *) (serialised + sizeof(char));
-    int *value_size_ptr = key_size_ptr + sizeof(int);
-    char *key_ptr = (char *) (value_size_ptr + sizeof(char) * command->key_size);
-    char *value_ptr = key_ptr + sizeof(char) * command->value_size;
+  int *int_ptr = (int *) data;
+  *int_ptr = command->key_size;
+  int_ptr++;
+  *int_ptr = command->value_size;
+  int_ptr++;
+  char *char_ptr = (char *) int_ptr;
+  int i = 0;
+  while (i < command->key_size) {
+    *char_ptr = command->key[i];
+    char_ptr++;
+    i++;
+  }
 
-    *operation_ptr = command->operation;
-    *key_size_ptr = command->key_size;
-    *value_size_ptr = command->value_size;
-    memcpy(key_ptr, command->key, command->key_size);
-    memcpy(value_ptr, command->value, command->value_size);
-
-    return serialised;
+  i = 0;
+  while (i < command->value_size) {
+    *char_ptr = command->value[i];
+    char_ptr++;
+    i++;
+  }
 };
 
-struct Command deserialise(char *data) {
-    char *operation_ptr = data;
-    int *key_size_ptr = (int *) (data + sizeof(char));
-    int *value_size_ptr = key_size_ptr + sizeof(int);
-    char *key_ptr = (char *) (value_size_ptr + sizeof(char) * (*key_size_ptr));
-    char *value_ptr = key_ptr + sizeof(char) * (*value_size_ptr);
+void deserialise_command(struct command *command, char *data) {
+  command->operation = *data;
+  data++;
+  int *int_ptr = (int *) data;
+  command->key_size = *int_ptr;
+  int_ptr++;
+  command->value_size = *int_ptr;
+  int_ptr++;
 
-    struct Command command;
-    command.operation = *operation_ptr;
-    command.key_size = *key_size_ptr;
-    command.value_size = *value_size_ptr;
-    command.key = kmalloc(sizeof(char) * (command.key_size - 1), GFP_KERNEL);
-    command.value = kmalloc(sizeof(char) * (command.value_size - 1), GFP_KERNEL);
-    memcpy(command.key, key_ptr, command.key_size);
-    memcpy(command.value, value_ptr, command.value_size);
-    return command;
+  command->key = kmalloc(sizeof(char) * (command->key_size), GFP_KERNEL);
+  command->value = kmalloc(sizeof(char) * (command->value_size), GFP_KERNEL);
+  char *char_ptr = (char *) int_ptr;
+  int i = 0;
+  while (i < command->key_size) {
+    command->key[i] = *char_ptr;
+    char_ptr++;
+    i++;
+  }
+  i = 0;
+  while (i < command->value_size) {
+    command->value[i] = *char_ptr;
+    char_ptr++;
+    i++;
+  }
 };
-
