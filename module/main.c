@@ -6,7 +6,8 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include "database.h"
+#include "error_code.h"
+#include "adaptor.h"
 
 // @formatter:off
 MODULE_LICENSE("GPL");
@@ -18,27 +19,27 @@ MODULE_VERSION("0.1");
 // @formatter:on
 
 static int __init moddb_init(void) {
-  int err = database_init();
-
-  switch (err) {
-  case DB_INIT_SUCCESS:
-    printk(KERN_ALERT "moddb: Module successfull installed\n");
-    break;
-  case DB_INIT_NETLINK:
+  int adaptor_err = adaptor_init();
+  if (adaptor_err == ADAPTOR_INIT_NETLINK) {
     printk(KERN_ALERT "moddb: Failed to initialize netlink\n");
-    break;
-  case DB_INIT_RHASHTABLE:
-    printk(KERN_ALERT "moddb: Failed to initialize rhashtable\n");
-    break;
-  default:
-    printk(KERN_ALERT "moddb: Failed to install module - unknown cause\n");
-    break;
+    return adaptor_err;
+  } else if (adaptor_err == SUCCESS) {
+    printk(KERN_ALERT "moddb: Netlink was successfully initialized\n");
   }
 
-  return err;
+  int db_err = database_init();
+  if (db_err == DB_INIT_RHASHTABLE) {
+      printk(KERN_ALERT "moddb: Failed to initialize rhashtable\n");
+      return db_err;
+  } else if (db_err == SUCCESS) {
+      printk(KERN_ALERT "moddb: Database was successfully initialized\n");
+  }
+
+  return SUCCESS;
 }
 
 static void __exit moddb_exit(void) {
+  adaptor_free();
   database_save();
   database_free();
   printk(KERN_ALERT "moddb: Module uninstalled\n");

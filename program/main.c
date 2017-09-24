@@ -92,15 +92,13 @@ int main() {
 
     struct command command;
     command.operation = 1;
-    command.key = "test_key";
-    command.value = "test_value";
+    command.key = "Hello from user!";
+    command.value = "Test message from user space";
     command.key_size = strlen(command.key) + 1;
     command.value_size = strlen(command.value) + 1;
     int command_size = sizeof(char) * (1 + command.value_size + command.key_size) + sizeof(int) * 2;
     char *serialised = malloc(command_size);
     serialise_command(&command, serialised);
-
-    printf("Command size: %d\n", command_size);
 
     nlh = (struct nlmsghdr *) malloc(NLMSG_SPACE(command_size));
     memset(nlh, 0, NLMSG_SPACE(command_size));
@@ -123,12 +121,13 @@ int main() {
 
 /* Read message from kernel */
     recvmsg(sock_fd, &msg, 0);
-    int len = NLMSG_PAYLOAD(nlh, 0);
-    char * buff = malloc(len);
-    struct command* cmd = (struct command *) malloc(sizeof(struct command));
+    char *buff = (char*)NLMSG_DATA(nlh);
+    struct command *cmd = (struct command *) malloc(sizeof(struct command));
     deserialise_command(cmd, buff);
-
-    printf("%s\n", cmd->key);
-    printf("%s\n", cmd->value);
+    printf("FROM KERNEL - Operation:    %d\n", cmd->operation);
+    printf("FROM KERNEL - Key size:     %d\n", cmd->key_size);
+    printf("FROM KERNEL - Key:          %s\n", cmd->key);
+    printf("FROM KERNEL - Value size:   %d\n", cmd->value_size);
+    printf("FROM KERNEL - Value:        %s\n", cmd->value);
     close(sock_fd);
 }

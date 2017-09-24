@@ -15,5 +15,6 @@ typedef struct command {
 
 command_t command_new(void);
 void command_free(command_t);
-void command_serialize(command_t, char *);
-void command_deserialize(command_t, char *);
+char* command_serialize(command_t);
+command_t command_deserialize(char *);
+int command_size(command_t);
