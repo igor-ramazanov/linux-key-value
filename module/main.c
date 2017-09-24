@@ -9,6 +9,7 @@
 #include "database.h"
 #include "error_code.h"
 #include "adaptor.h"
+#include "database.h"
 
 // @formatter:off
 MODULE_LICENSE("GPL");

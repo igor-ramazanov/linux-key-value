@@ -1,6 +1,7 @@
 //
 // Created by Igor Ramazanov on 24/09/2017.
 //
+
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/slab.h>
@@ -65,8 +66,8 @@ void adaptor_recv(struct sk_buff *skb) {
 
   struct command response;
   response.operation = 1;
-  response.key = "Hello from kernel!";
-  response.value = "Test message from kernel space";
+  response.key = "a";
+  response.value = "b";
   response.key_size = strlen(response.key) + 1;
   response.value_size = strlen(response.value) + 1;
   serialized = command_serialize(&response);
