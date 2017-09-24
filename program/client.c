@@ -11,13 +11,12 @@
 
 struct client {
     struct sockaddr_nl src_addr, dest_addr;
-    struct nlmsghdr *nlh;
-    struct iovec iov;
     int sock_fd;
-    struct msghdr msg;
 };
 
 static struct client client;
+
+void client_send_request(struct command *request);
 
 int client_init() {
     client.sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
@@ -43,6 +42,36 @@ void client_free() {
     close(client.sock_fd);
 }
 
+void client_send_request(struct command *request) {
+    char *serialized_request = command_serialize(request);
+    size_t msg_size = NLMSG_SPACE(command_size(request));
+
+
+    struct nlmsghdr *nlh = (struct nlmsghdr *) malloc(sizeof(struct nlmsghdr));
+    memset(nlh, 0, sizeof(struct nlmsghdr));
+    nlh->nlmsg_seq = 0;
+    nlh->nlmsg_type = 0x31;
+    nlh->nlmsg_len = msg_size;
+    nlh->nlmsg_pid = getpid();
+    nlh->nlmsg_flags = 0;
+
+    memcpy(NLMSG_DATA(nlh), serialized_request, command_size(request));
+
+    struct iovec iov;
+    iov.iov_len = nlh->nlmsg_len;
+    iov.iov_base = nlh;
+    struct msghdr msg;
+    msg.msg_name = &client.dest_addr;
+    msg.msg_namelen = sizeof(client.dest_addr);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = NULL;
+    msg.msg_controllen = 0;
+    msg.msg_flags = 0;
+
+    sendmsg(client.sock_fd, &msg, 0);
+}
+
 void client_set(char *key, char *data) {
     command_t request = command_new();
     request->operation = SET;
@@ -50,25 +79,8 @@ void client_set(char *key, char *data) {
     request->value = strdup(data);
     request->key_size = (int) (strlen(request->key) + 1);
     request->value_size = (int) (strlen(request->value) + 1);
-    char *serialized_request = command_serialize(request);
-    size_t msg_size = NLMSG_SPACE(command_size(request));
 
-    client.nlh = (struct nlmsghdr *) malloc(sizeof(struct nlmsghdr));
-    memset(client.nlh, 0, sizeof(struct nlmsghdr));
-    client.nlh->nlmsg_len = msg_size;
-    client.nlh->nlmsg_pid = getpid();
-    client.nlh->nlmsg_flags = 0;
-
-    memcpy(NLMSG_DATA(client.nlh), serialized_request, msg_size);
-
-    client.iov.iov_base = (void *) client.nlh;
-    client.iov.iov_len = client.nlh->nlmsg_len;
-    client.msg.msg_name = (void *) &client.dest_addr;
-    client.msg.msg_namelen = sizeof(client.dest_addr);
-    client.msg.msg_iov = &client.iov;
-    client.msg.msg_iovlen = 1;
-
-    sendmsg(client.sock_fd, &client.msg, 0);
+    client_send_request(request);
 }
 
 void client_get(char *key) {
@@ -78,32 +90,33 @@ void client_get(char *key) {
     request->value = strdup("");
     request->key_size = (int) (strlen(request->key) + 1);
     request->value_size = (int) (strlen(request->value) + 1);
-    char *serialized_request = command_serialize(request);
-    size_t msg_size = NLMSG_SPACE(command_size(request));
 
-    client.nlh = (struct nlmsghdr *) malloc(sizeof(struct nlmsghdr));
-    memset(client.nlh, 0, sizeof(struct nlmsghdr));
-    client.nlh->nlmsg_len = msg_size;
-    client.nlh->nlmsg_pid = getpid();
-    client.nlh->nlmsg_flags = NLM_F_REQUEST;
+    client_send_request(request);
 
-    memcpy(NLMSG_DATA(client.nlh), serialized_request, msg_size);
+    int len;
+    char buf[4096];
+    struct iovec iov = {buf, sizeof(buf)};
+    struct sockaddr_nl sa;
+    struct msghdr msg ={&sa, sizeof(sa), &iov, 1, NULL, 0, 0};
+    struct nlmsghdr *nh;
 
-    client.iov.iov_base = (void *) client.nlh;
-    client.iov.iov_len = client.nlh->nlmsg_len;
-    client.msg.msg_name = (void *) &client.dest_addr;
-    client.msg.msg_namelen = sizeof(client.dest_addr);
-    client.msg.msg_iov = &client.iov;
-    client.msg.msg_iovlen = 1;
+    len = (int) recvmsg(client.sock_fd, &msg, 0);
 
-    sendmsg(client.sock_fd, &client.msg, 0);
-    perror("sendmsg");
+    for (nh = (struct nlmsghdr *) buf; NLMSG_OK (nh, len);
+         nh = NLMSG_NEXT (nh, len)) {
+        /* The end of multipart message. */
+        printf("MESSAGE TYPE: %d\n", nh->nlmsg_type);
 
-    recvmsg(client.sock_fd, &client.msg, 0);
-    perror("recvmsg");
+        if (nh->nlmsg_type == NLMSG_DONE) {
+            printf("DONE");
+            return;
+        }
 
-    char *buff = (char *) NLMSG_DATA(client.nlh);
-    command_t response = command_deserialize(buff);
-    printf("%s\n", response->value);
-    free(client.nlh);
+        if (nh->nlmsg_type == NLMSG_ERROR) {
+            printf("ERROR");
+            return;;
+        }
+        char * data = NLMSG_DATA(nh);
+        printf("DATA: %s\n", data);
+    }
 }

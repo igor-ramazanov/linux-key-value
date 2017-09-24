@@ -5,7 +5,7 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/slab.h>
-#include <net/netlink.h>
+#include <net/genetlink.h>
 #include "adaptor.h"
 #include "error_code.h"
 #include "command.h"
@@ -41,21 +41,25 @@ void adaptor_free(void) {
   netlink_kernel_release(adaptor.socket);
 }
 
+void adaptor_send(int pid, int seq) {
+  char *msg = "Hello!";
+  int msg_size = strlen(msg) + 1;
+  struct sk_buff *skb = nlmsg_new(msg_size, GFP_KERNEL);
+  struct nlmsghdr *nlh = nlmsg_put(skb, pid, seq, 0x20, msg_size, 0);
+  memcpy(nlmsg_data(nlh), msg, msg_size);
+  int e = nlmsg_unicast(adaptor.socket, skb, pid);
+  printk(KERN_EMERG "RETURN CODE: %d\n", e);
+}
+
 void adaptor_recv(struct sk_buff *skb) {
-  struct nlmsghdr *nlh;
-  struct sk_buff *skb_out;
-  char *payload;
-  char *serialized;
-  int msg_size;
-  int pid;
-  int len;
+  struct nlmsghdr *nl = (struct nlmsghdr *) skb->data;
+  char *payload = (char *) nlmsg_data(nl);
+  int pid = nl->nlmsg_pid;
+  int seq = nl->nlmsg_seq;
+  int type = nl->nlmsg_type;
 
-  nlh = (struct nlmsghdr *) skb->data;
-
-  payload = (char *) nlmsg_data(nlh);
-  len = NLMSG_PAYLOAD(nlh, 0);
   command_t request = command_deserialize(payload);
-  printk(KERN_EMERG "FROM USER - Payload size: %d\n", len);
+  printk(KERN_EMERG "FROM USER - Type:         %d\n", type);
   printk(KERN_EMERG "FROM USER - Operation:    %d\n", request->operation);
   printk(KERN_EMERG "FROM USER - Key size:     %d\n", request->key_size);
   printk(KERN_EMERG "FROM USER - Key:          %s\n", request->key);
@@ -63,24 +67,5 @@ void adaptor_recv(struct sk_buff *skb) {
   printk(KERN_EMERG "FROM USER - Value:        %s\n", request->value);
   command_free(request);
 
-
-  struct command response;
-  response.operation = 1;
-  response.key = "a";
-  response.value = "b";
-  response.key_size = strlen(response.key) + 1;
-  response.value_size = strlen(response.value) + 1;
-  serialized = command_serialize(&response);
-
-  pid = nlh->nlmsg_pid;
-
-  msg_size = 0;
-  skb_out = nlmsg_new(msg_size, 0);
-  nlh = (struct nlmsghdr *)kmalloc(NLMSG_SPACE(command_size(&response)), GFP_KERNEL);
-  nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);
-  nlh->nlmsg_len = NLMSG_SPACE(command_size(&response));
-  NETLINK_CB(skb_out).dst_group = 0;
-  memcpy(nlmsg_data(nlh), serialized, msg_size);
-
-  nlmsg_unicast(adaptor.socket, skb_out, pid);
+  adaptor_send(pid, seq);
 }
