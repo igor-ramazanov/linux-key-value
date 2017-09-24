@@ -58,16 +58,12 @@ int database_init(void) {
 
   /* Initiaize netlink. */
   database.socket = netlink_kernel_create(&init_net, NETLINK_USER, &cfg);
-  if (!database.socket) {
-    printk(KERN_ALERT "moddb: Failed to create socket\n");
+  if (!database.socket)
     return DB_INIT_NETLINK;
-  }
 
   /* Initialize the rhashtable. */
-  if (rhashtable_init(&database.table, &params)) {
-    printk(KERN_ALERT "moddb: Failed to initialize rhashtable\n");
+  if (rhashtable_init(&database.table, &params))
     return DB_INIT_RHASHTABLE;
-  }
 
   return DB_INIT_SUCCESS;
 }
@@ -146,4 +142,8 @@ void database_rhashtable_cleanup(void *ptr, void *arg) {
     kfree_rcu(entry, rcu);
     entry = next;
   }
+}
+
+/* TODO actual code here. */
+void database_save(void) {
 }

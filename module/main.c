@@ -39,6 +39,7 @@ static int __init moddb_init(void) {
 }
 
 static void __exit moddb_exit(void) {
+  database_save();
   database_free();
   printk(KERN_ALERT "moddb: Module uninstalled\n");
 }

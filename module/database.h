@@ -13,6 +13,8 @@ enum database_error {
 
 int database_init(void);
 void database_free(void);
-void database_store(void);
+void database_save(void);
+
+/* Technically these don't have to be in the header - just for testing. */
 void database_insert(char *key, char *data, size_t length);
 void database_lookup(char *ey, const char **data, size_t *length);
