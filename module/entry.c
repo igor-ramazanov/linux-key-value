@@ -1,14 +1,14 @@
 /******************************************************************************
- * File:        database_entry.c                                              *
+ * File:        entry.c                                                       *
  * Description: TODO                                                          *
  * Author:      Erik Ramos <c03ers@cs.umu.se>                                 *
  * Version:     20170924                                                      *
  ******************************************************************************/
 #include <linux/slab.h>
-#include "database_entry.h"
+#include "entry.h"
 
-entry_t database_entry(char *key, char *data, size_t length) {
-  entry_t entry = (entry_t) kmalloc(sizeof(struct database_entry), GFP_KERNEL);
+entry_t entry_new(char *key, char *value, int length) {
+  entry_t entry = (entry_t) kmalloc(sizeof(struct entry), GFP_KERNEL);
   entry->key = key;
   entry->value = value;
   entry->length = length;
@@ -16,7 +16,12 @@ entry_t database_entry(char *key, char *data, size_t length) {
 }
 
 void entry_free(entry_t entry) {
+  if (!entry) {
+    printk(KERN_ALERT "Replaced entry should not bu NULL.\n");
+    return;
+  }
+
   kfree(entry->key);
   kfree(entry->value);
-  kfree_rcu(entry);
+  kfree_rcu(entry, rcu);
 }

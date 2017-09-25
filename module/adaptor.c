@@ -6,14 +6,17 @@
 #include <linux/string.h>
 #include <linux/slab.h>
 #include <net/genetlink.h>
+#include <net/sock.h>
 #include "adaptor.h"
 #include "error_code.h"
 #include "command.h"
-#include <net/sock.h>
+#include "database.h"
 
 #ifndef NETLINK_USER
 #define NETLINK_USER 31
 #endif
+
+/* TODO send replies / error messages */
 
 struct adaptor {
   struct sock *socket;
@@ -22,7 +25,7 @@ struct adaptor {
 static void adaptor_recv(struct sk_buff *);
 
 static struct netlink_kernel_cfg cfg = {
-        .input = adaptor_recv
+  .input = adaptor_recv
 };
 
 static struct adaptor adaptor;
@@ -42,17 +45,22 @@ void adaptor_free(void) {
 }
 
 void adaptor_send(int pid, int seq) {
+  struct nlmsghdr *nlh;
+  struct sk_buff *skb;
+  char *serialized;
+  int msg_size;
+
   command_t command = command_new();
   command->operation = 0;
   command->key = "hello from kernel!";
   command->value = "I'm the value from the kernel";
   command->key_size = (int) (strlen(command->key) + 1);
   command->value_size = (int) (strlen(command->value) + 1);
-  char * serialized = command_serialize(command);
-  int msg_size = command_size(command);
-  struct sk_buff *skb = nlmsg_new(NLMSG_SPACE(msg_size), GFP_KERNEL);
+  serialized = command_serialize(command);
+  msg_size = command_size(command);
+  skb = nlmsg_new(NLMSG_SPACE(msg_size), GFP_KERNEL);
   skb->len = NLMSG_SPACE(msg_size);
-  struct nlmsghdr *nlh = (struct nlmsghdr *) skb->data;
+  nlh = (struct nlmsghdr *) skb->data;
   nlh->nlmsg_pid = 0;
   nlh->nlmsg_flags = 0;
   nlh->nlmsg_type = 0x20;
@@ -65,13 +73,30 @@ void adaptor_recv(struct sk_buff *skb) {
   char *payload = (char *) nlmsg_data(nl);
   int pid = nl->nlmsg_pid;
   int seq = nl->nlmsg_seq;
-  int type = nl->nlmsg_type;
+  //int type = nl->nlmsg_type;
 
   command_t request = command_deserialize(payload);
   printk(KERN_EMERG "FROM USER - Operation:    %d\n", request->operation);
   printk(KERN_EMERG "FROM USER - Key:          %s\n", request->key);
   printk(KERN_EMERG "FROM USER - Value:        %s\n", request->value);
-  command_free(request);
 
-  adaptor_send(pid, seq);
+  switch (request->operation) {
+  case 0: {
+    char *value;
+    size_t size;
+
+    if (!database_lookup(request->key, &value, &size))
+      printk(KERN_ALERT "moddb: Mapping found: %s => %s\n", request->key, value);
+
+    adaptor_send(pid, seq);
+    break;
+  } case 1:
+    database_insert(request->key, request->value, request->value_size); 
+    break;
+  default:
+    printk(KERN_ALERT "moddb: user request for unknown operation\n");
+    break;
+  }
+
+  command_free(request);
 }

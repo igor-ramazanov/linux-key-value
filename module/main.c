@@ -21,7 +21,10 @@ MODULE_VERSION("0.1");
 // @formatter:on
 
 static int __init moddb_init(void) {
-  int adaptor_err = adaptor_init();
+  int adaptor_err;
+  int db_err;
+ 
+  adaptor_err = adaptor_init();
   if (adaptor_err == ADAPTOR_INIT_NETLINK) {
     printk(KERN_ALERT "moddb: Failed to initialize netlink\n");
     return adaptor_err;
@@ -29,7 +32,7 @@ static int __init moddb_init(void) {
     printk(KERN_ALERT "moddb: Netlink was successfully initialized\n");
   }
 
-  int db_err = database_init();
+  db_err = database_init();
   if (db_err == DB_INIT_RHASHTABLE) {
       printk(KERN_ALERT "moddb: Failed to initialize rhashtable\n");
       return db_err;

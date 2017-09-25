@@ -17,8 +17,6 @@ command_t command_new(void) {
 }
 
 void command_free(command_t command) {
-  kfree(command->key);
-  kfree(command->value);
   kfree(command);
 }
 
