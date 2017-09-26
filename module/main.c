@@ -1,7 +1,7 @@
 /*****************************************************************************
  * File:        moddb.c                                                      *
  * Description:                                                              *
- * Version:                                                                  *
+ * Version:     20170926                                                     *
  *****************************************************************************/
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -28,18 +28,15 @@ static int __init moddb_init(void) {
   if (adaptor_err == ADAPTOR_INIT_NETLINK) {
     printk(KERN_ALERT "moddb: Failed to initialize netlink\n");
     return adaptor_err;
-  } else if (adaptor_err == SUCCESS) {
-    printk(KERN_ALERT "moddb: Netlink was successfully initialized\n");
   }
 
   db_err = database_init();
   if (db_err == DB_INIT_RHASHTABLE) {
-      printk(KERN_ALERT "moddb: Failed to initialize rhashtable\n");
-      return db_err;
-  } else if (db_err == SUCCESS) {
-      printk(KERN_ALERT "moddb: Database was successfully initialized\n");
+    printk(KERN_ALERT "moddb: Failed to initialize rhashtable\n");
+    return db_err;
   }
 
+  printk(KERN_INFO "moddb: Module successfully installed\n");
   return SUCCESS;
 }
 
@@ -47,7 +44,7 @@ static void __exit moddb_exit(void) {
   adaptor_free();
   database_save();
   database_free();
-  printk(KERN_ALERT "moddb: Module uninstalled\n");
+  printk(KERN_INFO "moddb: Module removed\n");
 }
 
 module_init(moddb_init);

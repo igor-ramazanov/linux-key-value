@@ -82,16 +82,18 @@ void adaptor_send_not_found(int pid, int seq) {
 void adaptor_recv(struct sk_buff *skb) {
   struct nlmsghdr *nl;
   char *payload;
+  char type;
   int pid;
   int seq;
-  char type;
+  command_t request;
+
   nl = (struct nlmsghdr *) skb->data;
   payload = (char *) nlmsg_data(nl);
   pid = nl->nlmsg_pid;
   seq = nl->nlmsg_seq;
   type = nl->nlmsg_type;
 
-  command_t request = command_deserialize(payload);
+  request = command_deserialize(payload);
 
   switch (type) {
     case OPERATION_REQUEST_GET: {

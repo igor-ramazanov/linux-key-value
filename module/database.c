@@ -2,7 +2,7 @@
  * File:        database.c                                                   *
  * Description:                                                              *
  * Author:      Erik Ramos <c03ers@cs.umu.se>                                *
- * Version:     20170925                                                     *
+ * Version:     20170926                                                     *
  *****************************************************************************/
 #include <linux/rcupdate.h>
 #include <linux/rhashtable.h>
@@ -66,7 +66,6 @@ void database_free(void) {
  */
 void database_rhashtable_cleanup(void *ptr, void *arg) {
   entry_t entry = (entry_t) ptr;
-  printk(KERN_ALERT "Mapping %s=>%s removed.\n", entry->key, entry->value);
   entry_free(entry);
 }
 
@@ -87,7 +86,7 @@ u32 database_key_hash(const void *data, u32 len, u32 seed) {
 }
 
 /*
- * 
+ * Custom hash function to compare cstring keys.
  */
 u32 database_obj_hash(const void *data, u32 len, u32 seed) {
   entry_t entry = (entry_t) data;
@@ -120,7 +119,7 @@ int database_insert(char *key, char *value, size_t length) {
 
   if (err) {
     entry_free(new_entry);
-    printk(KERN_ALERT "moddb: Insertion failed.\n");
+    printk(KERN_WARNING "moddb: Insertion failed.\n");
   }
 
   spin_unlock(&database.lock);
@@ -142,10 +141,6 @@ int database_lookup(char *key, char **value, size_t *length) {
 
   spin_unlock(&database.lock);
   return 1;
-}
-
-int database_has_key(const char *key) {
-  return !rhashtable_lookup_fast(&database.table, key, params);
 }
 
 /* TODO actual code here. */
