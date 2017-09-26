@@ -31,9 +31,6 @@ void serialize(command_t command, char *data) {
   int *int_ptr;
   int i;
 
-  *data = command->operation;
-  data++;
-
   int_ptr = (int *) data;
   *int_ptr = command->key_size;
   int_ptr++;
@@ -66,8 +63,6 @@ void deserialize(struct command *command, char *data) {
   int *int_ptr;
   int i;
 
-  command->operation = *data;
-  data++;
   int_ptr = (int *) data;
   command->key_size = *int_ptr;
   int_ptr++;
@@ -94,5 +89,5 @@ void deserialize(struct command *command, char *data) {
 };
 
 int command_size(command_t command) {
-  return sizeof(char) * (1 + command->value_size + command->key_size) + sizeof(int) * 2;
+  return sizeof(char) * (command->value_size + command->key_size) + sizeof(int) * 2;
 }

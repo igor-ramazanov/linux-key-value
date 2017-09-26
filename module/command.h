@@ -4,9 +4,16 @@
  * Version:                                                                  *
  *****************************************************************************/
 #pragma once
+#include <linux/netlink.h>
+
+enum operation {
+  OPERATION_REQUEST_SET = 17,
+  OPERATION_REQUEST_GET = 18,
+  OPERATION_RESPONSE_FOUND = 19,
+  OPERATION_RESPONSE_NOT_FOUND = 20
+};
 
 typedef struct command {
-  char operation;
   int key_size;
   int value_size;
   char *key;

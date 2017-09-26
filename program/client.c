@@ -1,5 +1,4 @@
 #include <sys/socket.h>
-#include <linux/netlink.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -16,7 +15,7 @@ struct client {
 
 static struct client client;
 
-void client_send_request(struct command *request);
+void client_send_request(enum operation op, struct command *request);
 
 void client_receive_msg();
 
@@ -31,7 +30,6 @@ int client_init() {
     client.src_addr.nl_groups = 0;
 
     bind(client.sock_fd, (struct sockaddr *) &client.src_addr, sizeof(client.src_addr));
-    perror("bind");
 
     memset(&client.dest_addr, 0, sizeof(client.dest_addr));
     client.dest_addr.nl_family = AF_NETLINK;
@@ -45,7 +43,7 @@ void client_free() {
     close(client.sock_fd);
 }
 
-void client_send_request(struct command *request) {
+void client_send_request(enum operation op, struct command *request) {
     char *serialized_request = command_serialize(request);
     size_t msg_size = NLMSG_SPACE(command_size(request));
 
@@ -53,7 +51,7 @@ void client_send_request(struct command *request) {
     struct nlmsghdr *nlh = (struct nlmsghdr *) malloc(NLMSG_SPACE(msg_size));
     memset(nlh, 0, NLMSG_SPACE(msg_size));
     nlh->nlmsg_seq = 0;
-    nlh->nlmsg_type = 0x31;
+    nlh->nlmsg_type = op;
     nlh->nlmsg_len = NLMSG_SPACE(msg_size);
     nlh->nlmsg_pid = getpid();
     nlh->nlmsg_flags = 0;
@@ -77,38 +75,46 @@ void client_send_request(struct command *request) {
 
 void client_set(char *key, char *data) {
     command_t request = command_new();
-    request->operation = SET;
     request->key = strdup(key);
     request->value = strdup(data);
     request->key_size = (int) (strlen(request->key) + 1);
     request->value_size = (int) (strlen(request->value) + 1);
 
-    client_send_request(request);
+    client_send_request(OPERATION_REQUEST_SET, request);
 }
 
 void client_get(char *key) {
     command_t request = command_new();
-    request->operation = GET;
     request->key = strdup(key);
     request->value = strdup("");
     request->key_size = (int) (strlen(request->key) + 1);
     request->value_size = (int) (strlen(request->value) + 1);
 
-    client_send_request(request);
+    client_send_request(OPERATION_REQUEST_GET, request);
     client_receive_msg();
 }
 
 void client_receive_msg() {
     char buf[4096];
-    struct iovec iov = { buf, sizeof(buf) };
+    struct iovec iov = {buf, sizeof(buf)};
     struct sockaddr_nl sa;
-    struct msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
+    struct msghdr msg = {&sa, sizeof(sa), &iov, 1, NULL, 0, 0};
     struct nlmsghdr *nh;
-
+    char *payload;
+    command_t command;
     recvmsg(client.sock_fd, &msg, 0);
     nh = (struct nlmsghdr *) buf;
-    char * payload = NLMSG_DATA(nh);
-    command_t command = command_deserialize(payload);
-    printf("FROM KERNEL - Key: %s\n", command->key);
-    printf("FROM KERNEL - Value: %s\n", command->value);
+    switch (nh->nlmsg_type) {
+        case OPERATION_RESPONSE_FOUND:
+            payload = NLMSG_DATA(nh);
+            command = command_deserialize(payload);
+            printf("%s\n", command->value);
+            break;
+        case OPERATION_RESPONSE_NOT_FOUND:
+            printf("Not found\n");
+            break;
+        default:
+            printf("Wrong message type\n");
+            break;
+    }
 }
