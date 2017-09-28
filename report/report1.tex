@@ -1,4 +1,4 @@
-\documentclass[draft,a4paper]{article}
+\documentclass[final,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{graphicx}
@@ -6,15 +6,13 @@
 \usepackage{fancyhdr}
 \usepackage{datetime}
 
-\newcommand{\email}[1]{#1}
 \newcommand{\course}{Operating Systems, 5dv171}
 \newcommand{\semester}{Fall 2017}
 \newcommand{\assignment}{Project Linux Kernel Module - part 1}
-\newcommand{\auth}[2]{#1, \email{#2}}
 \newcommand{\authors}{
-  \auth{Igor Ramazanov}{ens17irv@cs.umu.se}\\
-  \auth{Erik Ramos}{c03ers@cs.umu.se}\\
-  \auth{Bastien Harendarczyk}{ens17bhk@cs.umu.se}\\
+  Igor Ramazanov, ens17irv@cs.umu.se\\
+  Erik Ramos, c03ers@cs.umu.se\\
+  Bastien Harendarczyk, ens17bhk@cs.umu.se\\
   \vspace{1em}
 }
 \newcommand{\lecturer}{Jan Erik Moström}
@@ -24,7 +22,6 @@
 \setlength{\parindent}{0em}
 \setlength{\parskip}{1em}
 
-%\newcommand{\frontpage}{
 \title{
   \vspace{4em}
   \pagenumbering{gobble}
@@ -35,7 +32,7 @@
   {\normalsize
   {\bf Teacher}\\
   {\lecturer}\vspace{1em}\\
-  {\bf Teaching assistent}\\
+  {\bf Teaching assistant}\\
   {\assistants}\vspace{1em}\\
   {\bf Group members}\\
   \authors
@@ -60,12 +57,12 @@ The project consists of two parts - the kernel module and the user space
 test program. All files required to build both parts can be found in the gitlab
 repository.
 
-To build the project, begin by cloning the repositorybyt typing the following in
+To build the project, begin by cloning the repository typing the following in
 a terminal:
 \begin{center}
 {\tt git clone \codebase}
 \end{center}
-In the project directory there are two subdirectories; module and program.
+In the project directory there are two sub directories; module and program.
 Both of these directories have a Makefile for building. Simply enter the
 directories and type {\tt make} in the terminal.
 
@@ -85,15 +82,15 @@ To retrieve data from the module using the test program, instead write this:
 
 \section*{Problem description}
 The goal with this project is to write a Linux Kernel Module (LKM) that allows
-different processes running on the same linux machine, to access shared data
+different processes running on the same Linux machine, to access shared data
 through key-value mappings, stored in the kernel. The system must be robust
 enough, that multiple processes, running on multiple processors, can use it
 without accidentally corrupting the stored data. A user space application must
-also be implementated to demonstrate the functionality of the LKM.
+also be implemented to demonstrate the functionality of the LKM.
 
 This first part of the project report describes how the LKM represents these
 mappings, how the user space applications communicate with the module and
-what consideratons went into the decisions.\pagebreak
+what considerations went into the decisions.\pagebreak
 
 \section*{Solution}
 The following three methods of user to kernel space communication were
@@ -104,7 +101,7 @@ considered for this project:
   \item Proc files
   \item Netlink sockets
 \end{enumerate}
-Using one of the filesystems to solve the problem was appealing, primarly
+Using one of the file systems to solve the problem was appealing, primarily
 because much of the heavy lifting would be done by system calls already
 available in Linux. However, since device files usually represent actual,
 physical devices and proc files are meant to contain information about
