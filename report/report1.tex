@@ -1,0 +1,103 @@
+\documentclass[draft,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{fancyhdr}
+\usepackage{datetime}
+
+\newcommand{\email}[1]{#1}
+\newcommand{\course}{Operating Systems, 5dv171}
+\newcommand{\semester}{Fall 2017}
+\newcommand{\assignment}{Project Linux Kernel Module - part 1}
+\newcommand{\auth}[2]{#1, \email{#2}}
+\newcommand{\authors}{
+  \auth{Igor Ramazanov}{ens17irv@cs.umu.se}\\
+  \auth{Erik Ramos}{c03ers@cs.umu.se}\\
+  \auth{Bastien Harendarczyk}{ens17bhk@cs.umu.se}\\
+  \vspace{1em}
+}
+\newcommand{\lecturer}{Jan-Erik Moström}
+\newcommand{\assistants}{Adam Dahlgren}
+\newcommand{\codebase}{https://git.cs.umu.se/c03ers/5dv171-project}
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{1em}
+
+%\newcommand{\frontpage}{
+\title{
+  \vspace{4em}
+  \pagenumbering{gobble}
+  \begin{center}
+  {\LARGE \bf \course{}, \semester}\\
+  {\Large \bf \assignment}\\
+  \vspace{6em}
+  {\normalsize
+  {\bf Teacher}\\
+  {\lecturer}\vspace{1em}\\
+  {\bf Teaching assistent}\\
+  {\assistants}\vspace{1em}\\
+  {\bf Group members}\\
+  \authors
+  {\bf Gitlab repository}\vspace{-1em}\\
+  {\codebase}}
+  \end{center}
+  \pagebreak
+  \pagenumbering{arabic}
+}
+
+\author{}
+\date{\today}
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0em}
+\fancyhead[R]{\the\year-\twodigit{\the\month}-\twodigit{\the\day}}
+
+\begin{document}
+\maketitle
+
+\section*{User's guide}
+The project consists of two parts - the kernel module and the user space
+test program. All files required to build both parts can be found in the gitlab
+repository.
+
+To build the project, begin by cloning the repositorybyt typing the following in
+a terminal:
+\begin{center}
+{\tt git clone \codebase}
+\end{center}
+
+\section*{Problem description}
+The goal with this project is to write a Linux Kernel Module (LKM) that allows
+different processes running on the same linux machine, to access shared data
+through key-value mappings. The system must be robust enough, that multiple
+processes, running on multiple processors, will not accidentally corrupt the
+stored data.
+
+This first part of the project report describes how the LKM represents these
+mappings in kernel space, as well as how the user space applications can
+access them.
+
+\section*{Solution}
+The following three methods of user to kernel space communication were
+considered for this project:
+\begin{enumerate}
+  \item Device files
+  \item Proc files
+  \item Netlink sockets
+\end{enumerate}
+Using one of the filesystems to solve the problem was appealing, primarly
+because much of the heavy lifting would be done by system calls aleady
+available in Linux. However, since device files usually repressent an actual,
+physical device and proc files are meant to contain information about processes,
+none of these seemed like a really good fit.
+
+Because the kernel module would provide user space applications with a service,
+in much the same way that an Internet server would to its clients, Netlink
+sockets seemed like a much better fit. They would however, be much more
+complicated to set up and use.
+
+\section*{System limitations}
+
+\section*{Discussion}
+
+\end{document}
