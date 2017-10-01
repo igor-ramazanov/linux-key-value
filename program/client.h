@@ -11,4 +11,4 @@ void client_close(void);
 
 void client_set(char *key, char *data);
 
-void client_get(char *key);
+int client_get(char *key, char** data, size_t *data_size);

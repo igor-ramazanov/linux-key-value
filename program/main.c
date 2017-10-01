@@ -13,10 +13,14 @@ int main(int argc, char **argv) {
 
     if (strcmp("get", argv[1]) == 0 && argc == 3) {
         char *key;
+        char *value;
+        size_t value_size;
         key = argv[2];
-        client_get(key);
-        /*char *value = client_get(key);
-        printf("%s\n", value);*/
+        if (client_get(key, &value, &value_size)) {
+            printf("%s\n", value);
+        } else {
+            printf("Not found\n");
+        }
         return 0;
     } else if (strcmp("set", argv[1]) == 0 && argc == 4) {
         char *key;

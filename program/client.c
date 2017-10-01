@@ -17,7 +17,7 @@ static struct client client;
 
 void client_send_request(enum operation op, struct command *request);
 
-void client_receive_msg();
+int client_receive_msg(char** data, size_t *data_size);
 
 int client_init() {
     client.sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
@@ -83,7 +83,7 @@ void client_set(char *key, char *data) {
     client_send_request(OPERATION_REQUEST_SET, request);
 }
 
-void client_get(char *key) {
+int client_get(char *key, char** data, size_t *data_size) {
     command_t request = command_new();
     request->key = strdup(key);
     request->value = strdup("");
@@ -91,10 +91,10 @@ void client_get(char *key) {
     request->value_size = (int) (strlen(request->value) + 1);
 
     client_send_request(OPERATION_REQUEST_GET, request);
-    client_receive_msg();
+    return client_receive_msg(data, data_size);
 }
 
-void client_receive_msg() {
+int client_receive_msg(char** data, size_t *data_size) {
     char buf[4096];
     struct iovec iov = {buf, sizeof(buf)};
     struct sockaddr_nl sa;
@@ -108,13 +108,12 @@ void client_receive_msg() {
         case OPERATION_RESPONSE_FOUND:
             payload = NLMSG_DATA(nh);
             command = command_deserialize(payload);
-            printf("%s\n", command->value);
-            break;
+            *data = command->value;
+            *data_size = (size_t) command->value_size;
+            return 1;
         case OPERATION_RESPONSE_NOT_FOUND:
-            printf("Not found\n");
-            break;
+            return 0;
         default:
-            printf("Wrong message type\n");
-            break;
+            return 0;
     }
 }
