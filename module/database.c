@@ -29,10 +29,10 @@ static u32 database_obj_hash(const void *, u32, u32);
 /*
  * The actual database object.
  */
+DEFINE_RWLOCK(lock);
 static struct database {
   struct rhashtable table;
   struct rhashtable_params params;
-  spinlock_t lock;
 } database;
 
 /*
@@ -53,7 +53,6 @@ int database_init(void) {
   if (rhashtable_init(&database.table, &params))
     return DB_INIT_RHASHTABLE;
 
-  spin_lock_init(&database.lock);
   return SUCCESS;
 }
 
@@ -106,7 +105,7 @@ int database_insert(char *key, char *value, size_t length) {
   if (!new_entry)
 	  return -ENOMEM;
 
-  spin_lock(&database.lock);
+  write_lock(&lock);
 
   /* Replace the old mapping or create a new if none exists. */
   old_entry = (entry_t) rhashtable_lookup_fast(&database.table, key, params);
@@ -122,24 +121,24 @@ int database_insert(char *key, char *value, size_t length) {
     printk(KERN_WARNING "moddb: Insertion failed.\n");
   }
 
-  spin_unlock(&database.lock);
+  write_unlock(&lock);
   return err;
 }
 
 int database_lookup(char *key, char **value, size_t *length) {
   entry_t entry;
 
-  spin_lock(&database.lock);
+  read_lock(&lock);
 
   entry = rhashtable_lookup_fast(&database.table, key, params);
   if (entry) {
     *value = entry->value;
     *length = entry->length;
-    spin_unlock(&database.lock);
+    read_unlock(&lock);
     return 0;
   }
 
-  spin_unlock(&database.lock);
+  read_unlock(&lock);
   return 1;
 }
 
