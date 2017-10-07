@@ -1,6 +1,7 @@
 PROG	=	test
-OBJS	=	main.o client.o command.o
+OBJS	=	main.o nlsocket.o shared_map.o message.o
 CC	=	gcc
+CFLAGS	=	-ggdb3
 LDFLAGS	=	-pthread -ggdb3
 
 all : $(PROG)

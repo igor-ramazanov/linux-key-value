@@ -16,10 +16,8 @@ entry_t entry_new(char *key, char *value, int length) {
 }
 
 void entry_free(entry_t entry) {
-  if (!entry) {
-    printk(KERN_ALERT "Replaced entry should not bu NULL.\n");
+  if (!entry)
     return;
-  }
 
   kfree(entry->key);
   kfree(entry->value);
