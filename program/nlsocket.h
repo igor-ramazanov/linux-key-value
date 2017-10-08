@@ -10,7 +10,7 @@
 
 typedef struct nlsocket *nlsocket_t;
 
-nlsocket_t nlsocket_new(pid_t port, int protocol);
+nlsocket_t nlsocket_new(pid_t port, int protocol, int header);
 void nlsocket_free(nlsocket_t sock);
 int nlsocket_send(nlsocket_t sock, const void *buf, size_t buflen);
 int nlsocket_recv(nlsocket_t sock, void *buf, size_t buflen);

@@ -16,6 +16,8 @@
 #define SHARED_MAP_PROTOCOL 31
 #endif
 
+#define SHARED_MAP_HEADER 17
+
 // @formatter:off
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Shared key-value pair database.");
@@ -38,7 +40,7 @@ static int __init shared_map_init(void) {
   }
 
   /* Initialize Netlink. */
-  if (nlsocket_init(SHARED_MAP_PROTOCOL, request_handler)) {
+  if (nlsocket_init(SHARED_MAP_PROTOCOL, SHARED_MAP_HEADER, request_handler)) {
     printk(KERN_ALERT "shared_map: Failed to initialize Netlink\n");
     return 1;
   }
@@ -49,6 +51,7 @@ static int __init shared_map_init(void) {
 }
 
 static void __exit shared_map_exit(void) {
+  nlsocket_destroy();
   map_save();
   map_destroy();
   printk(KERN_INFO "shared_map: Module removed\n");

@@ -15,6 +15,7 @@
 /* The nlsocket object. */
 static struct nlsocket {
   recv_callback recvfrom; /* Callback function for received data. */
+  int header;             /* Header type for Netlink to use. */
   struct sock *socket;    /* The actual Netlink socket. */
 } netlink;
 
@@ -24,7 +25,7 @@ static struct netlink_kernel_cfg cfg = {
   .input = nlsocket_receive
 };
 
-int nlsocket_init(int protocol, recv_callback callback) {
+int nlsocket_init(int protocol, int header, recv_callback callback) {
 
   /* Initialize netlink. */
   netlink.socket = netlink_kernel_create(&init_net, protocol, &cfg);
@@ -32,6 +33,7 @@ int nlsocket_init(int protocol, recv_callback callback) {
     return NLSOCKET_INIT_FAILED;
 
   netlink.recvfrom = callback;
+  netlink.header = header;
   return NLSOCKET_INIT_SUCCESS;
 }
 
@@ -57,7 +59,7 @@ int nlsocket_sendto(pid_t port, const void *data, size_t size) {
   /* Create the message header. */
   skb->len = NLMSG_SPACE(size);
   header = (struct nlmsghdr *) skb->data;
-  header->nlmsg_type = NLMSG_DONE;
+  header->nlmsg_type = netlink.header;
   header->nlmsg_pid = 0;
   header->nlmsg_flags = 0;
   memcpy(NLMSG_DATA(header), data, size);
@@ -76,9 +78,9 @@ int nlsocket_sendto(pid_t port, const void *data, size_t size) {
  */
 void nlsocket_receive(struct sk_buff *skb) {
 
-  /* We only use NLMSG_DONE. */
+  /* We only use netlink.header. */
   struct nlmsghdr *header = (struct nlmsghdr *) skb->data;
-  if (header->nlmsg_type != NLMSG_DONE)
+  if (header->nlmsg_type != netlink.header)
     return;
 
   /* Use the callback to process the data. */

@@ -16,6 +16,6 @@
 
 typedef void (*recv_callback)(pid_t sender, const void *data, size_t size);
 
-int nlsocket_init(int protocol, recv_callback callback);
+int nlsocket_init(int protocol, int header, recv_callback callback);
 void nlsocket_destroy(void);
 int nlsocket_sendto(pid_t destination, const void *data, size_t size);

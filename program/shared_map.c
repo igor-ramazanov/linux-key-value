@@ -8,7 +8,8 @@
 #include <stdlib.h>
 #include "nlsocket.h"
 #include "shared_map.h"
-#define NLPROTO_SHARED_MAP 31 /* Our Netlink protocol number. */
+#define SHARED_MAP_PROTOOCL 31 /* Our Netlink protocol number. */
+#define SHARED_MAP_HEADER   17 /* Header type for our Netlink messages. */
 
 /* The shared_map. */
 struct shared_map {
@@ -23,7 +24,7 @@ shared_map_t shared_map_new(pid_t tid) {
     return NULL;
 
   /* Create a socket for communication. */
-  map->socket = nlsocket_new(tid, NLPROTO_SHARED_MAP);
+  map->socket = nlsocket_new(tid, SHARED_MAP_PROTOOCL, SHARED_MAP_HEADER);
   if (!map->socket) {
     free(map);
     return NULL;

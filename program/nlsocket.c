@@ -20,11 +20,12 @@
 struct nlsocket {
   struct sockaddr_nl source;
   struct sockaddr_nl destination;
+  int header;
   int sockfd;
   pid_t port;
 };
 
-nlsocket_t nlsocket_new(pid_t port, int protocol) {
+nlsocket_t nlsocket_new(pid_t port, int protocol, int header) {
 
   /* Create a new shared map object. */
   nlsocket_t sock = (nlsocket_t) malloc(sizeof(struct nlsocket));
@@ -53,6 +54,7 @@ nlsocket_t nlsocket_new(pid_t port, int protocol) {
   sock->destination.nl_family = AF_NETLINK;
   sock->destination.nl_pid = KERNEL_PID;
 
+  sock->header = header;
   sock->port = port;
   return sock;
 }
@@ -78,7 +80,7 @@ int nlsocket_send(nlsocket_t sock, const void *buf, size_t buflen) {
   /* Prepare the request message header .*/
   memset(&header, 0, sizeof(struct nlmsghdr));
   memcpy(NLMSG_DATA(&header), buf, buflen);
-  header.nlmsg_type = NLMSG_DONE;
+  header.nlmsg_type = sock->header;
   header.nlmsg_len = NLMSG_SPACE(buflen);
   header.nlmsg_pid = sock->port;
 
@@ -133,7 +135,7 @@ int nlsocket_recv(nlsocket_t sock, void *buf, size_t buflen) {
 
   /* Check the returned value. */
   header = (struct nlmsghdr *) buffer;
-  if (header->nlmsg_type == NLMSG_DONE) {
+  if (header->nlmsg_type == sock->header) {
     memcpy(buf, NLMSG_DATA(header), buflen);
     error = 0;
   }
