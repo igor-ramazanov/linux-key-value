@@ -19,12 +19,13 @@ static message_t message_user(const char *key, size_t key_length,
  * Frees a message.
  */
 void message_free(message_t message) {
-  if (!message)
-    return;
 
-  kfree(message->value);
-  kfree(message->key);
-  kfree(message);
+  //if (!message)
+    //return;
+
+  //kfree(message->value);
+  //kfree(message->key);
+  //kfree(message);
 }
 
 /*
@@ -78,25 +79,35 @@ message_t message_copy(const message_t message) {
   const char *user_key;
   const void *user_value;
 
+  printk(KERN_DEBUG "virt_addr_valid: %d\n", virt_addr_valid(message));
+
   /* Create a copy of the message. */
   message_t copy = message_empty(GFP_KERNEL);
-  if (!copy || !access_ok(VERIFY_READ, message, sizeof(struct message))
-      || !copy_from_user(copy, message, sizeof(struct message)))
+  if (!copy || !copy_from_user(copy, message, sizeof(struct message))) {
+    printk(KERN_DEBUG "failed to copy from user\n");
     goto error;
+  }
+
+  printk(KERN_DEBUG "type: %d\n", copy->type);
+  printk(KERN_DEBUG "klen: %lu\n", copy->key_length);
+  printk(KERN_DEBUG "vlen: %lu\n", copy->value_length);
 
   /* Copy the key. */
   user_key = copy->key;
   copy->key = (char *) kmalloc(copy->key_length, GFP_KERNEL);
-  if (!copy->key || !access_ok(VERIFY_READ, user_key, copy->key_length)
-      || !copy_from_user(copy->key, user_key, copy->key_length))
+  if (!copy->key || !copy_from_user(copy->key, user_key, copy->key_length)) {
+    printk(KERN_DEBUG "failed to copy key\n");
     goto error;
+  }
 
   /* Copy the value. */
   user_value = copy->value;
   copy->value = kmalloc(copy->value_length, GFP_KERNEL);
-  if (!copy->value || !access_ok(VERIFY_READ, user_value, copy->value_length)
-      || !copy_from_user(copy->value, user_value, copy->value_length))
+  if (!copy->value || !copy_from_user(copy->value, user_value,
+      copy->value_length)) {
+    printk(KERN_DEBUG "failed to copy value\n");
     goto error;
+  }
 
   /* No errors. */
   return copy;

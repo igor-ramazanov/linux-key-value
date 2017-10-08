@@ -26,6 +26,7 @@ message_t message_lookup(const char *key) {
   message->value_length = 0;
   message->key = strdup(key);
   message->value = NULL;
+  message->type = MESSAGE_REQUEST_LOOKUP;
   return message;
 }
 
@@ -35,6 +36,7 @@ message_t message_insert(const char *key, const void *value, size_t length) {
   message->value_length = length;
   message->key = strdup(key);
   message->value = memdup(value, length);
+  message->type = MESSAGE_REQUEST_INSERT;
   return message;
 }
 

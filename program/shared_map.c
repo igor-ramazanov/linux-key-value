@@ -38,6 +38,9 @@ void shared_map_free(shared_map_t map) {
   free(map);
 }
 
+#include <stdio.h>
+#include <unistd.h>
+
 int shared_map_insert(shared_map_t map,
     const char *key,
     const void *value,
@@ -48,6 +51,9 @@ int shared_map_insert(shared_map_t map,
 
   /* Send a request to insert a value. */
   request = message_insert(key, value, size);
+  printf("Sending message with address: %lx\n", request);
+  sleep(1);
+
   error = nlsocket_send(map->socket, &request, sizeof(message_t));
   if (!error)
     goto out;

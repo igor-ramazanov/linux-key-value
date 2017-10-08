@@ -28,8 +28,8 @@ MODULE_VERSION("0.1");
 // @formatter:on
 
 static void request_handler(pid_t, const void *, size_t);
-static void handle_insert_request(pid_t, message_t);
-static void handle_lookup_request(pid_t, message_t);
+static void handle_insert_request(pid_t, struct message __user *);
+static void handle_lookup_request(pid_t, struct message __user *);
 
 static int __init shared_map_init(void) {
 
@@ -57,25 +57,30 @@ static void __exit shared_map_exit(void) {
   printk(KERN_INFO "shared_map: Module removed\n");
 }
 
+#include <linux/slab.h>
+#include <linux/uaccess.h>
+#include <linux/string.h>
+#include <stddef.h>
+
 /*
  * Handles messages sent to the module's Netlink socket.
  */
 static void request_handler(pid_t user, const void *data, size_t size) {
+  message_t request = message_copy(*(message_t *) data);
 
-  /* Copy the message from user-space. */
-  message_t request = message_copy((message_t) data);
+  struct message __user *m = *(struct message __user **) data;
+  printk(KERN_DEBUG "access_ok(m): %d\n", access_ok(VERIFY_READ, m, sizeof(message_t)));
+
   if (!request)
     return;
 
   switch (request->type) {
   case MESSAGE_REQUEST_LOOKUP:
 
-    /* Pass lookup requests to a separate handler. */
     handle_lookup_request(user, request);
     break;
   case MESSAGE_REQUEST_INSERT:
 
-    /* Pass insert requests to a separate handler. */
     handle_insert_request(user, request);
     break;
   default:
@@ -87,8 +92,8 @@ static void request_handler(pid_t user, const void *data, size_t size) {
 /*
  * Handles requests to create a mapping.
  */
-void handle_insert_request(pid_t user, message_t request) {
-  message_t response;
+void handle_insert_request(pid_t user, struct message __user *request) {
+  struct message __user *response;
   int result;
 
   /* Attempt to create the mapping. */
@@ -124,12 +129,12 @@ void handle_insert_request(pid_t user, message_t request) {
  * NOTE sending pointer to a variable on the stack seems dangerous
  *      but it should be pointing to memory in user-space... right?
  */
-void handle_lookup_request(pid_t user, message_t request) {
+void handle_lookup_request(pid_t user, struct message __user *request) {
   void *data;
   size_t length;
 
   /* Insert the value and generate an appropriate response. */
-  message_t response = !map_lookup(request->key, &data, &length)
+  struct message __user *response = !map_lookup(request->key, &data, &length)
       ? message_lookup(request->key, data, length)
       : message_key_not_found(request->key);
 
