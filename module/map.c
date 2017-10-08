@@ -109,15 +109,15 @@ int map_insert(char *key, void *value, size_t length) {
   if (old_entry && !rhashtable_replace_fast(&map.table, &old_entry->head,
       &new_entry->head, params)) {
 
-    /* Insert a new entry. */
+    /* Replace an old entry. */
     map_remove_entry(old_entry, NULL);
-    err = MAP_INSERT_SUCCESS;
+    err = MAP_INSERT_REPLACED;
   } else if (!old_entry) {
 
-    /* Replace an old entry. */
+    /* Insert a new entry. */
     err = rhashtable_insert_fast(&map.table, &new_entry->head, params)
         ? MAP_INSERT_FAILED
-        : MAP_INSERT_REPLACED;
+        : MAP_INSERT_SUCCESS;
   } else {
 
     /* This should never happen. */

@@ -69,7 +69,7 @@ int nlsocket_sendto(pid_t port, const void *data, size_t size) {
     return NLSOCKET_SENDTO_FAILED;
 
   /* Clean up and return. */
-  nlmsg_free(skb);
+  //nlmsg_free(skb);
   return NLSOCKET_SENDTO_SUCCESS;
 }
 

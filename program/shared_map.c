@@ -47,21 +47,20 @@ int shared_map_insert(shared_map_t map,
     size_t size) {
   message_t request;
   message_t response;
-  int error;
 
   /* Send a request to insert a value. */
   request = message_insert(key, value, size);
-  printf("Sending message with address: %lx\n", request);
-  sleep(1);
-
-  error = nlsocket_send(map->socket, &request, sizeof(message_t));
-  if (!error)
+  if (nlsocket_send(map->socket, &request, sizeof(message_t)))
     goto out;
+
+  printf("message sent.\n");
 
   /* Receive a response from the kernel. */
-  error = nlsocket_recv(map->socket, &response, sizeof(message_t));
-  if (!error)
+  if (nlsocket_recv(map->socket, &response, sizeof(message_t)))
     goto out;
+
+  printf("%s => %s\n", response->key, (char *) response->value);
+  return 0;
 
   /* On success, this message must be freed. */
   message_free(response);
@@ -70,7 +69,7 @@ out:
 
   /* Clean up and return. */
   message_free(request);
-  return error;
+  return -1;
 }
 
 /*

@@ -106,6 +106,8 @@ int nlsocket_send(nlsocket_t sock, const void *buf, size_t buflen) {
  * Have to assume split messages to make this function a generic recv.
  * Pointers are small enough to fit in one message, so we'll be fine.
  * We need message types that are not Netlink headers already.
+ * 
+ * TODO special return value when pid != KERNEL_PID. EAGAIN?
  *
  * Returns 0 on success and -1 on failure.
  */
