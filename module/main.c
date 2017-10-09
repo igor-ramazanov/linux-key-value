@@ -67,9 +67,11 @@ static void request_handler(pid_t user, void *data, size_t size) {
 
   switch (request->type) {
   case MESSAGE_LOOKUP:
+    printk(KERN_DEBUG "lookup request received\n");
     handle_lookup_request(user, request);
     break;
   case MESSAGE_INSERT:
+    printk(KERN_DEBUG "insert request received\n");
     handle_insert_request(user, request);
     break;
   default:
@@ -83,21 +85,26 @@ static void request_handler(pid_t user, void *data, size_t size) {
 void handle_insert_request(pid_t user, const message_t request) {
   message_t response;
 
+  message_print(request);
+
   /* Attempt to create the mapping. */
   switch (map_insert(request->key, request->value, request->value_length)) {
   case MAP_INSERT_SUCCESS:
 
     /* Successful insertion of a new element. */
+    printk(KERN_DEBUG "new insestion\n");
     response = message_value_inserted();
     break;
   case MAP_INSERT_REPLACED:
 
     /* Successful replacement of an old element. */
+    printk(KERN_DEBUG "replacement\n");
     response = message_value_replaced();
     break;
   default:
 
     /* Insertion failed. */
+    printk(KERN_DEBUG "failure\n");
     response = message_error();
     return;
   }
@@ -117,9 +124,19 @@ void handle_lookup_request(pid_t user, const message_t request) {
   void *data;
 
   /* Insert the value and generate an appropriate response. */
-  message_t response = !map_lookup(request->key, &data, &length)
-      ? message_lookup_ok(data, length)
-      : message_key_not_found();
+  //message_t response = !map_lookup(request->key, &data, &length)
+      //? message_lookup_ok(data, length)
+      //: message_key_not_found();
+
+  message_t response;
+  int error = map_lookup(request->key, &data, &length);
+  if (error == MAP_LOOKUP_FAILED) {
+    response = message_key_not_found();
+    printk(KERN_DEBUG "key not found: %s\n", request->key);
+  } else {
+    response = message_lookup_ok(data, length);
+    printk(KERN_DEBUG "key found: %s => %s\n", request->key, (char *) data);
+  }
 
   if (!response) {
     printk(KERN_ERR "shared_map: out of memory?\n");

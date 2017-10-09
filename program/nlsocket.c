@@ -16,6 +16,8 @@
 #define READ_BUFFER_SIZE 4096          /* Size of the read buffer. */
 #define KERNEL_PID 0                   /* Kernel's port number. */
 
+#include <stdio.h>
+
 /* The socket. */
 struct nlsocket {
   struct sockaddr_nl source;
@@ -111,12 +113,13 @@ int nlsocket_send(nlsocket_t sock, const void *buf, size_t buflen) {
  *
  * Returns 0 on success and -1 on failure.
  */
-int nlsocket_recv(nlsocket_t sock, void *buf, size_t buflen) {
+int nlsocket_recv(nlsocket_t sock, void **data, size_t *length) {
   char buffer[READ_BUFFER_SIZE];
   struct sockaddr_nl sender;
   struct iovec iovec;
   struct msghdr message;
   struct nlmsghdr *header;
+  size_t payload;
   int error = -1;
 
   /* Initialize the iovec object. */
@@ -138,12 +141,28 @@ int nlsocket_recv(nlsocket_t sock, void *buf, size_t buflen) {
   if (sender.nl_pid != KERNEL_PID)
     goto out;
 
-  /* Check the returned value. */
+  /* Check the returned message type. */
   header = (struct nlmsghdr *) buffer;
-  if (header->nlmsg_type == sock->header) {
-    memcpy(buf, NLMSG_DATA(header), buflen);
+  if (header->nlmsg_type != NLMSG_DONE)
+    goto out;
+
+  /* Copy the length. */
+  payload = header->nlmsg_len - NLMSG_HDRLEN;
+  if (length)
+    *length = payload;
+
+  /* Only copy data if the user is interested. */
+  if (!data) {
     error = 0;
+    goto out;
   }
+
+  /* Allocate memory and copy data into it. */
+  *data = malloc(payload);
+  if (*data == NULL)
+    goto out;
+  memcpy(*data, NLMSG_DATA(header), payload);
+  error = 0;
 
 out:
   return error;

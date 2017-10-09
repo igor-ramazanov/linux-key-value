@@ -139,6 +139,7 @@ int map_lookup(const char *key, void **value, size_t *length) {
 
   entry = rhashtable_lookup_fast(&map.table, key, params);
   if (!entry) {
+    printk(KERN_DEBUG "%s is not in the table\n", key);
     read_unlock(&lock);
     return MAP_LOOKUP_FAILED;
   }

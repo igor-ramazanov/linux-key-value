@@ -32,6 +32,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  //shared_map_free(map);
+  shared_map_free(map);
   return 0;
 }

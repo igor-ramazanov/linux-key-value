@@ -52,16 +52,13 @@ int nlsocket_sendto(pid_t port, const void *data, size_t size) {
   struct sk_buff *skb;
 
   /* Create a Netlink message. */
-  skb = nlmsg_new(NLMSG_SPACE(size), GFP_KERNEL);
+  skb = nlmsg_new(size, GFP_KERNEL);
   if (!skb)
     return NLSOCKET_SENDTO_FAILED;
 
   /* Create the message header. */
-  skb->len = NLMSG_SPACE(size);
-  header = (struct nlmsghdr *) skb->data;
-  header->nlmsg_type = netlink.header;
-  header->nlmsg_pid = 0;
-  header->nlmsg_flags = 0;
+  header = nlmsg_put(skb, 0, 0, NLMSG_DONE, size, 0);
+  NETLINK_CB(skb).dst_group = 0;
   memcpy(NLMSG_DATA(header), data, size);
 
   /* Send the message. */
