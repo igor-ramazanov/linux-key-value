@@ -92,7 +92,7 @@ u32 map_obj_hash(const void *data, u32 len, u32 seed) {
 /*
  * TODO RCU protect the replaced element?
  */
-int map_insert(char *key, void *value, size_t length) {
+int map_insert(const char *key, const void *value, size_t length) {
   entry_t old_entry;
   entry_t new_entry;
   int err = MAP_INSERT_SUCCESS;

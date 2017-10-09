@@ -28,7 +28,7 @@ static message_t message_build(unsigned char type, const void *value,
   size_t message_length;
 
   /* Create the message. */
-  message_length = offsetof(struct message, key) + value_length;
+  message_length = sizeof(struct message) + value_length;
   message = (message_t) kmalloc(message_length, GFP_KERNEL);
   if (!message)
     return NULL;
@@ -37,8 +37,8 @@ static message_t message_build(unsigned char type, const void *value,
   message->type = type;
   message->key_length = 0;
   message->value_length = value_length;
-  message->key = (char *) (message + offsetof(struct message, key));
-  message->value = (void *) (message->key + message->key_length);
+  message->key = (char *) message + sizeof(struct message);
+  message->value = (void *) message->key;
   memcpy(message->value, value, value_length);
 
   return message;
@@ -50,7 +50,7 @@ static message_t message_build(unsigned char type, const void *value,
  */
 message_t message_cast(void *data) {
   message_t message = (message_t) data;
-  message->key = (char *) (message + offsetof(struct message, key));
+  message->key = (char *) message + sizeof(struct message);
   message->value = message->key + message->key_length;
   return message;
 }
@@ -60,8 +60,8 @@ void message_free(message_t message) {
 }
 
 inline size_t message_length(message_t message) {
-  size_t key_offset = offsetof(struct message, key);
-  return key_offset + message->key_length + message->value_length;
+  size_t data_length = message->key_length + message->value_length;
+  return sizeof(struct message) + data_length;
 }
 
 inline message_t message_lookup_ok(const void *value, size_t value_length) {

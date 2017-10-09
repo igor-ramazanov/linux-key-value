@@ -28,40 +28,32 @@ MODULE_VERSION("0.1");
 // @formatter:on
 
 static void request_handler(pid_t, void *, size_t);
-static void handle_insert_request(pid_t, message_t);
-static void handle_lookup_request(pid_t, message_t);
+static void handle_insert_request(pid_t, const message_t);
+static void handle_lookup_request(pid_t, const message_t);
 
 static int __init shared_map_init(void) {
 
-  message_t message = message_lookup_ok("Hello, World!", 14);
-  message_print(message);
-  //printk(KERN_DEBUG "value:        %s\n", (char *) message->value);
-  //printk(KERN_DEBUG "value length: %lu\n", message->value_length);
-  //printk(KERN_DEBUG "key length:   %lu\n", message->key_length);
-  message_free(message);
-
-
   /* Initialize the hashtable. */
-  //if (map_init()) {
-    //printk(KERN_ALERT "shared_map: Failed to initialize rhashtable\n");
-    //return 1;
-  //}
+  if (map_init()) {
+    printk(KERN_ALERT "shared_map: Failed to initialize rhashtable\n");
+    return 1;
+  }
 
   /* Initialize Netlink. */
-  //if (nlsocket_init(SHARED_MAP_PROTOCOL, SHARED_MAP_HEADER, request_handler)) {
-    //printk(KERN_ALERT "shared_map: Failed to initialize Netlink\n");
-    //return 1;
-  //}
+  if (nlsocket_init(SHARED_MAP_PROTOCOL, SHARED_MAP_HEADER, request_handler)) {
+    printk(KERN_ALERT "shared_map: Failed to initialize Netlink\n");
+    return 1;
+  }
  
   /* Initialization successful. */
-  //printk(KERN_INFO "shared_map: Module successfully installed\n");
+  printk(KERN_INFO "shared_map: Module successfully installed\n");
   return 0;
 }
 
 static void __exit shared_map_exit(void) {
-  //nlsocket_destroy();
-  //map_save();
-  //map_destroy();
+  nlsocket_destroy();
+  map_save();
+  map_destroy();
   printk(KERN_INFO "shared_map: Module removed\n");
 }
 
@@ -90,8 +82,6 @@ static void request_handler(pid_t user, void *data, size_t size) {
  */
 void handle_insert_request(pid_t user, const message_t request) {
   message_t response;
-
-  /* TODO copy key and value. */
 
   /* Attempt to create the mapping. */
   switch (map_insert(request->key, request->value, request->value_length)) {

@@ -10,12 +10,12 @@
 
 typedef struct entry {
   char *key;
-  char *value;
+  void *value;
   int length;
   struct entry __rcu *next;
   struct rhash_head head;
   struct rcu_head rcu;
 } *entry_t;
 
-entry_t entry_new(char *key, char *value, int length);
+entry_t entry_new(const char *key, const void *value, size_t length);
 void entry_free(entry_t);

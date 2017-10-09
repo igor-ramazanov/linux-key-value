@@ -5,12 +5,13 @@
  * Version:     20170924                                                      *
  ******************************************************************************/
 #include <linux/slab.h>
+#include <linux/string.h>
 #include "entry.h"
 
-entry_t entry_new(char *key, char *value, int length) {
+entry_t entry_new(const char *key, const void *value, size_t length) {
   entry_t entry = (entry_t) kmalloc(sizeof(struct entry), GFP_KERNEL);
-  entry->key = key;
-  entry->value = value;
+  entry->key = kstrdup(key, GFP_KERNEL);
+  entry->value = kmemdup(value, length, GFP_KERNEL);
   entry->length = length;
   return entry;
 }
