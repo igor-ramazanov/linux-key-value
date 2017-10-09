@@ -14,7 +14,7 @@
 #define NLSOCKET_SENDTO_SUCCESS  0
 #define NLSOCKET_SENDTO_FAILED  -1
 
-typedef void (*recv_callback)(pid_t sender, const void *data, size_t size);
+typedef void (*recv_callback)(pid_t sender, void *data, size_t size);
 
 int nlsocket_init(int protocol, int header, recv_callback callback);
 void nlsocket_destroy(void);

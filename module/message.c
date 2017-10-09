@@ -5,166 +5,81 @@
  * Version:     20171007                                                      *
  ******************************************************************************/
 #include <linux/slab.h>
-#include <linux/uaccess.h>
 #include <linux/string.h>
 #include "message.h"
 
-/* XXX What happens with copy_to_user/copy_from_user if value i NULL? */ 
-
-static message_t message_user(const char *key, size_t key_length,
-    const void *value, size_t value_length, message_type_t type);
-
-/*
- * Frees a message.
- */
-void message_free(message_t message) {
-
-  //if (!message)
-    //return;
-
-  //kfree(message->value);
-  //kfree(message->key);
-  //kfree(message);
-}
-
-/*
- * Creates and returns a message containing the key-value mapping.
- * The returned message exists in user-space.
- */
-inline message_t message_lookup(const char *key, const void *value, size_t length) {
-  message_type_t type = MESSAGE_REQUEST_LOOKUP;
-  return message_user(key, strlen(key) + 1, value, length, type);
-}
-
-/*
- * Creates and returns a message indicating that the key was not mapped.
- * The returned message exists in user-space.
- */
-inline message_t message_key_not_found(const char *key) {
-  message_type_t type = MESSAGE_RESPONSE_KEY_NOT_FOUND;
-  return message_user(key, strlen(key) + 1, NULL, 0, type);
-}
-
-/*
- * Creates and returns a message indicating that a new pair was mapped.
- * The returned message exists in user-space.
- */
-inline message_t message_inserted(const char *key) {
-  message_type_t type = MESSAGE_RESPONSE_INSERT;
-  return message_user(key, strlen(key) + 1, NULL, 0, type);
-}
-
-/*
- * Creates and returns a message indicating that the mapped value was replaced.
- * The returned message exists in user-space.
- */
-inline message_t message_replaced(const char *key) {
-  message_type_t type = MESSAGE_RESPONSE_INSERT;
-  return message_user(key, strlen(key) + 1, NULL, 0, type);
-}
-
-/*
- * Creates an returns an error message.
- * The returned message exists in user-space.
- */
-inline message_t message_error(void) {
-  return message_user(NULL, 0, NULL, 0, MESSAGE_RESPONSE_ERROR);
-}
-
-/*
- * Copies a message in user-space to kernel-space.
- */
-message_t message_copy(const message_t message) {
-  const char *user_key;
-  const void *user_value;
-  message_t copy;
-
-  /* Create a copy of the message. */
-  copy = (message_t) kzalloc(sizeof(struct message), GFP_KERNEL);
-  if (!copy || copy_from_user(copy, message, sizeof(struct message))) {
-    printk(KERN_DEBUG "failed to copy from user\n");
-    goto error;
+void message_print(message_t message) {
+  if (!message) {
+    printk(KERN_DEBUG "Message: (NULL)\n");
+    return;
   }
 
-  /* Copy the key. */
-  user_key = copy->key;
-  copy->key = (char *) kmalloc(copy->key_length, GFP_KERNEL);
-  if (!copy->key || copy_from_user(copy->key, user_key, copy->key_length)) {
-    printk(KERN_DEBUG "failed to copy key\n");
-    goto error;
-  }
-
-  /* Copy the value. */
-  user_value = copy->value;
-  copy->value = kmalloc(copy->value_length, GFP_KERNEL);
-  if (!copy->value || copy_from_user(copy->value, user_value,
-      copy->value_length)) {
-    printk(KERN_DEBUG "failed to copy value\n");
-    goto error;
-  }
-
-  /* No errors. */
-  return copy;
-
-error:
-  message_free(copy);
-  return NULL;
+  printk(KERN_DEBUG "Type:         %d\n", (int) message->type);
+  printk(KERN_DEBUG "Key length:   %lu\n", message->key_length);
+  printk(KERN_DEBUG "Value length: %lu\n", message->value_length);
+  printk(KERN_DEBUG "Key:          %s\n", (message->key_length ? message->key : "(NULL)"));
+  printk(KERN_DEBUG "Value:        %s\n",
+      (message->value_length ? (char *) message->value : "(NULL)"));
 }
 
-/*
- * Helper function for the response message builder functions.
- * The message will be created in user-space and key and value copied to it.
- */
-message_t message_user(const char *key, size_t key_length,
-    const void *value, size_t value_length, message_type_t type) {
+static message_t message_build(unsigned char type, const void *value,
+    size_t value_length) {
+  message_t message;
+  size_t message_length;
 
-  /* Create a message in user-space and copy data to it. */
-  message_t message = (message_t) kzalloc(sizeof(struct message), GFP_USER);
+  /* Create the message. */
+  message_length = offsetof(struct message, key) + value_length;
+  message = (message_t) kmalloc(message_length, GFP_KERNEL);
   if (!message)
-    goto error;
+    return NULL;
 
-  printk(KERN_DEBUG "USER MESSAGE GOT ADDRESS %lX\n", message);
-
-  /* Copy the key. */
-  message->key = (char *) kmalloc(key_length, GFP_USER);
-  if (key && !message->key)
-    goto error;
-  memcpy(message->key, key, key_length);
-
-  //if (!message->key || copy_to_user(message->key, key, key_length)) {
-    //printk(KERN_DEBUG "failed to copy key to message\n");
-    //goto error;
-  //}
-
-  /* Copy the value. */
-  message->value = kmalloc(value_length, GFP_USER);
-  if (value && !message->value)
-    goto error;
+  /* Copy data into it. */
+  message->type = type;
+  message->key_length = 0;
+  message->value_length = value_length;
+  message->key = (char *) (message + offsetof(struct message, key));
+  message->value = (void *) (message->key + message->key_length);
   memcpy(message->value, value, value_length);
 
-
-  //if ((value && !message->value)
-      //|| copy_to_user(message->value, value, value_length)) {
-    //printk(KERN_DEBUG "failed to copy value to message\n");
-    //goto error;
-  //}
-
-  message->type = type;
-  message->key_length = key_length;
-  message->value_length = value_length;
-
-  /* Copy the lengths and and type. */
-  //if (copy_to_user(&message->key_length, &key_length, sizeof(size_t))
-      //|| copy_to_user(&message->value_length, &value_length, sizeof(size_t))
-      //|| copy_to_user(&message->type, &type, sizeof(message_type_t))) {
-    //printk(KERN_DEBUG "failed to copy variables to message.\n");
-    //goto error;
-  //}
-
-  /* No errors - return the message. */
   return message;
+}
 
-error:
-  message_free(message);
-  return NULL;
+/*
+ * This function updates the pointers (for convenience).
+ * The returned message must NOT be freed.
+ */
+message_t message_cast(void *data) {
+  message_t message = (message_t) data;
+  message->key = (char *) (message + offsetof(struct message, key));
+  message->value = message->key + message->key_length;
+  return message;
+}
+
+void message_free(message_t message) {
+  kfree(message);
+}
+
+inline size_t message_length(message_t message) {
+  size_t key_offset = offsetof(struct message, key);
+  return key_offset + message->key_length + message->value_length;
+}
+
+inline message_t message_lookup_ok(const void *value, size_t value_length) {
+  return message_build(MESSAGE_LOOKUP_OK, value, value_length);
+}
+
+inline message_t message_key_not_found(void) {
+  return message_build(MESSAGE_KEY_NOT_FOUND, NULL, 0);
+}
+
+inline message_t message_value_inserted(void) {
+  return message_build(MESSAGE_VALUE_INSERTED, NULL, 0);
+}
+
+inline message_t message_value_replaced(void) {
+  return message_build(MESSAGE_VALUE_REPLACED, NULL, 0);
+}
+
+inline message_t message_error(void) {
+  return message_build(MESSAGE_ERROR, NULL, 0);
 }

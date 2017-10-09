@@ -7,36 +7,35 @@
 #pragma once
 #include <stddef.h>
 
-/* Message types. */
-typedef enum message_type {
+/* User-space requests. */
+#define MESSAGE_LOOKUP         0x00 /* For lookup requests. */
+#define MESSAGE_INSERT         0x01 /* For insertion requests. */
 
-  /* User-space requests. */
-  MESSAGE_REQUEST_LOOKUP         = 0x00, /* For lookup requests. */
-  MESSAGE_REQUEST_INSERT         = 0x01, /* For insertion requests. */
+/* Kernel-space responses. */
+#define MESSAGE_LOOKUP_OK      0x20 /* For successful lookups. */
+#define MESSAGE_VALUE_INSERTED 0x21 /* For new insertions. */
+#define MESSAGE_VALUE_REPLACED 0x22 /* For updates. */
+#define MESSAGE_KEY_NOT_FOUND  0x23 /* For lookup on non-existent keys. */
 
-  /* Kernel-space responses. */
-  MESSAGE_RESPONSE_LOOKUP        = 0x20, /* For successful lookups. */
-  MESSAGE_RESPONSE_INSERT        = 0x21, /* For new insertions. */
-  MESSAGE_RESPONSE_REPLACED      = 0x22, /* For updates. */
-  MESSAGE_RESPONSE_KEY_NOT_FOUND = 0x23, /* For lookup on non-existent keys. */
+/* Generic error messages. */
+#define MESSAGE_ERROR          0x40 /* For other, unexpected errors. */
 
-  /* Generic error messages. */
-  MESSAGE_RESPONSE_ERROR         = 0x40  /* For other, unexpected errors. */
-} message_type_t;
-
-/* The message. */
 typedef struct message {
-  message_type_t type;
-  size_t key_length;
-  size_t value_length;
-  char *key;
-  void *value;
+  unsigned char type;    /* Message type - one of the above. */
+  size_t key_length;     /* Length of the key, including '\0'. */
+  size_t value_length;   /* Length of the value. */
+  char *key;             /* Cstring key. */
+  void *value;           /* The value. */
 } *message_t;
 
-void message_free(message_t message);
-message_t message_copy(const message_t message);
-message_t message_lookup(const char *key, const void *value, size_t length);
-message_t message_key_not_found(const char *key);
-message_t message_inserted(const char *key);
-message_t message_replaced(const char *key);
+// TODO remove
+void message_print(message_t message);
+
+message_t message_cast(void *data);
+message_t message_lookup_ok(const void *value, size_t length);
+message_t message_key_not_found(void);
+message_t message_value_inserted(void);
+message_t message_value_replaced(void);
 message_t message_error(void);
+size_t message_length(message_t message);
+void message_free(message_t message);
