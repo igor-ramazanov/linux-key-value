@@ -8,21 +8,6 @@
 #include <string.h>
 #include "message.h"
 
-#include <stdio.h>
-
-void message_print(message_t message) {
-  if (!message) {
-    printf("message: (NULL)\n");
-    return;
-  }
-
-  printf("Type:         0x%02x\n", (int) message->type);
-  printf("Key length:   %lu\n", message->key_length);
-  printf("Value length: %lu\n", message->value_length);
-  printf("Key:          %s\n", (message->key_length ? message->key : "(NULL)"));
-  printf("Value:        %s\n", (message->value_length ? (char *) message->value : "(NULL)"));
-}
-
 static message_t message_build(unsigned char type, const char *key,
     const void *value, size_t value_length) {
   size_t message_length;
@@ -41,6 +26,7 @@ static message_t message_build(unsigned char type, const char *key,
     return NULL;
 
   /* Copy data into it. */
+  memset(message, 0, message_length);
   message->type = type;
   message->key_length = key_length;
   message->value_length = value_length;

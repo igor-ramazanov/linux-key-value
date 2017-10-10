@@ -66,17 +66,13 @@ int shared_map_insert(shared_map_t map, const char *key, const void *value,
     goto out;
 
   response = message_cast(data);
-  message_print(response);
-  //printf("%s => %s\n", response->key, (char *) response->value);
-
-  /* On success, this message must be freed. */
-  //message_free(response);
-  error = 0;
+  error = (response->type == MESSAGE_ERROR) ? -1 : 0;
+  message_free(response);
 
 out:
 
   /* Clean up and return. */
-  //message_free(request);
+  message_free(request);
   return error;
 }
 
@@ -99,7 +95,6 @@ int shared_map_lookup(shared_map_t map, const char *key, void **value,
 
   /* Check the message type. */
   response = message_cast(data);
-  message_print(response);
   if (response->type != MESSAGE_LOOKUP_OK)
     goto out;
 
@@ -107,6 +102,7 @@ int shared_map_lookup(shared_map_t map, const char *key, void **value,
   *value_length = response->value_length;
   *value = memdup(response->value, *value_length);
   error = 0;
+  printf("Looup OK\n");
 
 out:
 

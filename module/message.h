@@ -28,9 +28,6 @@ typedef struct message {
   void *value;           /* The value. */
 } *message_t;
 
-// TODO remove
-void message_print(message_t message);
-
 message_t message_cast(void *data);
 message_t message_lookup_ok(const void *value, size_t length);
 message_t message_key_not_found(void);

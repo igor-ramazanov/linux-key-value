@@ -8,20 +8,6 @@
 #include <linux/string.h>
 #include "message.h"
 
-void message_print(message_t message) {
-  if (!message) {
-    printk(KERN_DEBUG "Message: (NULL)\n");
-    return;
-  }
-
-  printk(KERN_DEBUG "Type:         %d\n", (int) message->type);
-  printk(KERN_DEBUG "Key length:   %lu\n", message->key_length);
-  printk(KERN_DEBUG "Value length: %lu\n", message->value_length);
-  printk(KERN_DEBUG "Key:          %s\n", (message->key_length ? message->key : "(NULL)"));
-  printk(KERN_DEBUG "Value:        %s\n",
-      (message->value_length ? (char *) message->value : "(NULL)"));
-}
-
 static message_t message_build(unsigned char type, const void *value,
     size_t value_length) {
   message_t message;

@@ -121,7 +121,7 @@ int map_insert(const char *key, const void *value, size_t length) {
   } else {
 
     /* This should never happen. */
-    printk(KERN_INFO "shared_map: Faild to replace an entry\n");
+    printk(KERN_ERR "shared_map: Faild to replace an entry\n");
     err = MAP_INSERT_FAILED;
   }
 
@@ -139,7 +139,6 @@ int map_lookup(const char *key, void **value, size_t *length) {
 
   entry = rhashtable_lookup_fast(&map.table, key, params);
   if (!entry) {
-    printk(KERN_DEBUG "%s is not in the table\n", key);
     read_unlock(&lock);
     return MAP_LOOKUP_FAILED;
   }

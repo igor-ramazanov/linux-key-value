@@ -79,11 +79,15 @@ int nlsocket_send(nlsocket_t sock, const void *buf, size_t buflen) {
   struct msghdr message;
   struct iovec iovec;
   size_t msg_size;
+  int error;
 
   /* Prepare the request message header .*/
   msg_size = NLMSG_SPACE(buflen);
   header = (struct nlmsghdr *) malloc(msg_size);
-  memset(header, 0, sizeof(struct nlmsghdr));
+  if (!header)
+    return -1;
+
+  memset(header, 0, msg_size);
   memcpy(NLMSG_DATA(header), buf, buflen);
   header->nlmsg_type = sock->header;
   header->nlmsg_len = msg_size;
@@ -101,7 +105,9 @@ int nlsocket_send(nlsocket_t sock, const void *buf, size_t buflen) {
   message.msg_iovlen = 1;
 
   /* Send the message. */
-  return (sendmsg(sock->sockfd, &message, 0) < 0) ? -1 : 0;
+  error = (sendmsg(sock->sockfd, &message, 0) < 0) ? -1 : 0;
+  free(header);
+  return error;
 }
 
 /*
