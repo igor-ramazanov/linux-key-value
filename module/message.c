@@ -33,6 +33,7 @@ static message_t message_build(unsigned char type, const void *value,
 /*
  * This function updates the pointers (for convenience).
  * The returned message must NOT be freed.
+ * NOTE write range should be checked.
  */
 message_t message_cast(void *data) {
   message_t message = (message_t) data;

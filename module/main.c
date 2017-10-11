@@ -9,14 +9,15 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include "nlsocket.h"
+#include "logger.h"
 #include "map.h"
+#include "nlsocket.h"
+#include "pstore.h"
 
+#define SHARED_MAP_HEADER 17
 #ifndef SHARED_MAP_PROTOCOL
 #define SHARED_MAP_PROTOCOL 31
 #endif
-
-#define SHARED_MAP_HEADER 17
 
 // @formatter:off
 MODULE_LICENSE("GPL");
@@ -30,23 +31,28 @@ MODULE_VERSION("0.1");
 static void request_handler(pid_t, void *, size_t);
 static void handle_insert_request(pid_t, const message_t);
 static void handle_lookup_request(pid_t, const message_t);
+static int restore_data(void);
 
 static int __init shared_map_init(void) {
 
   /* Initialize the hashtable. */
   if (map_init()) {
-    printk(KERN_ALERT "shared_map: Failed to initialize rhashtable\n");
+    logger_error("failed to initialize rhashtable\n");
     return 1;
   }
 
+  /* Try to recover data. */
+  if (pstore_init() || restore_data())
+    logger_warn("persistent storage is not available\n");
+
   /* Initialize Netlink. */
   if (nlsocket_init(SHARED_MAP_PROTOCOL, SHARED_MAP_HEADER, request_handler)) {
-    printk(KERN_ALERT "shared_map: Failed to initialize Netlink\n");
+    logger_error("failed to initialize Netlink\n");
     return 1;
   }
  
   /* Initialization successful. */
-  printk(KERN_INFO "shared_map: Module successfully installed\n");
+  logger_info("module installed\n");
   return 0;
 }
 
@@ -54,7 +60,7 @@ static void __exit shared_map_exit(void) {
   nlsocket_destroy();
   map_save();
   map_destroy();
-  printk(KERN_INFO "shared_map: Module removed\n");
+  logger_info("module removed");
 }
 
 /*
@@ -122,6 +128,11 @@ void handle_lookup_request(pid_t user, const message_t request) {
   if (response)
     nlsocket_sendto(user, response, message_length(response));
   message_free(response);
+}
+
+/* TODO */
+int restore_data(void) {
+  return 0;
 }
 
 module_init(shared_map_init);
