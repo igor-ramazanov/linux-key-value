@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include "entry.h"
+#include "logger.h"
 #include "map.h"
 
 /*
@@ -121,7 +122,7 @@ int map_insert(const char *key, const void *value, size_t length) {
   } else {
 
     /* This should never happen. */
-    printk(KERN_ERR "shared_map: Faild to replace an entry\n");
+    logger_error("a mapping exists! ...but it also doesn't.\n");
     err = MAP_INSERT_FAILED;
   }
 

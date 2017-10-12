@@ -8,6 +8,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/slab.h>
 #include "logger.h"
 #include "map.h"
@@ -26,6 +27,11 @@ MODULE_AUTHOR("Erik Ramos <c03ers@cs.umu.se>");
 MODULE_AUTHOR("Igor Ramazanov <ens17irv@cs.umu.se>");
 MODULE_AUTHOR("Bastien Harendarczyk<ens17bhk@cs.umu.se>");
 MODULE_VERSION("0.1");
+
+/* Module parameter for memory size (in MiB). */
+static unsigned long storage_capacity = 2048;
+module_param(storage_capacity, long, 0);
+MODULE_PARM_DESC(storage_capacity, "Persistent storage capacity in MiB");
 // @formatter:on
 
 static void request_handler(pid_t, void *, size_t);
@@ -41,8 +47,10 @@ static int __init shared_map_init(void) {
     return 1;
   }
 
+  logger_debug("storage_capacity: %d\n", storage_capacity);
+
   /* Try to recover data. */
-  if (pstore_init() || restore_data())
+  if (pstore_init(storage_capacity) || restore_data())
     logger_warn("persistent storage is not available\n");
 
   /* Initialize Netlink. */
