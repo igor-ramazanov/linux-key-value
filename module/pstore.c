@@ -5,14 +5,19 @@
  * Version:     20171011                                                      *
  ******************************************************************************/
 #include <linux/blkdev.h>
+#include <linux/device.h>
 #include <linux/vmalloc.h>
 #include <linux/types.h>
+#include <linux/mount.h>
 #include "logger.h"
 #include "pstore.h"
 #define DISK_NAME "map"
 
+extern struct kobject *sysfs_dev_block_kobj;
+
 static void print_request(struct request *);
 
+static int create_device(unsigned long capacity);
 static void handle_request(struct request_queue *queue);
 static void pstore_release(struct gendisk *disk, fmode_t mode);
 static int pstore_open(struct block_device *device, fmode_t mode);
@@ -37,7 +42,31 @@ static struct gendisk *disk;
 static struct request_queue *requests;
 static int major;
 
+struct class block_class = {
+  .name = "block",
+};
+
 int pstore_init(unsigned long capacity) {
+  dev_t devt = name_to_dev_t("/dev/map");
+  major = MAJOR(devt);
+
+  if (!major && create_device(capacity)) {
+    logger_warn("failed to create device\n");
+    return 1;
+  }
+
+  struct block_device *blkdev = bdget(devt);
+  if (blkdev->bd_disk) {
+    logger_debug("disk capacity: %llu\n", get_capacity(blkdev->bd_disk) * 512);
+    logger_debug("queue does%s exist\n", (blkdev->bd_disk->queue ? "" : " NOT"));
+  } else {
+    logger_debug("disk does not exist\n");
+  }
+
+  return 0;
+}
+
+int create_device(unsigned long capacity) {
 
   /* Make sure that the stogare capacity is at least 1MiB. */
   capacity *= 1024 * 1024;
@@ -76,14 +105,17 @@ int pstore_init(unsigned long capacity) {
   return 0;
 
 queue_fail:
+  logger_debug("  queue failure\n");
   del_gendisk(disk);
   put_disk(disk);
   vfree(disk);
 
 alloc_fail:
+  logger_debug("  alloc failure\n");
   unregister_blkdev(major, DISK_NAME);
 
 reg_fail:
+  logger_debug("  registration failure\n");
   return 1;
 }
 
