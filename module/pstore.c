@@ -9,14 +9,16 @@
 #include <linux/vmalloc.h>
 #include <linux/types.h>
 #include <linux/mount.h>
+#include <linux/slab.h>
 #include "logger.h"
 #include "pstore.h"
-#define DISK_NAME "map"
+#define DEVICE_NAME "map"
 
 extern struct kobject *sysfs_dev_block_kobj;
 
 static void print_request(struct request *);
 
+static char *stringcat(const char *s1, const char *s2);
 static int create_device(unsigned long capacity);
 static void handle_request(struct request_queue *queue);
 static void pstore_release(struct gendisk *disk, fmode_t mode);
@@ -40,25 +42,33 @@ static DEFINE_MUTEX(mutex);
 static int usage_count;
 static struct gendisk *disk;
 static struct request_queue *requests;
-static int major;
-
-struct class block_class = {
-  .name = "block",
-};
+static struct block_device *device;
 
 int pstore_init(unsigned long capacity) {
-  dev_t devt = name_to_dev_t("/dev/map");
-  major = MAJOR(devt);
+  char *path;
+  dev_t devt;
 
-  if (!major && create_device(capacity)) {
+  /* Get the device (if it exists). */
+  path = stringcat("/dev/", DEVICE_NAME);
+  devt = name_to_dev_t(path);
+  kfree(path);
+
+  /* Create the device if it does not exist. */
+  if (!MAJOR(devt) && create_device(capacity)) {
     logger_warn("failed to create device\n");
     return 1;
   }
 
-  struct block_device *blkdev = bdget(devt);
-  if (blkdev->bd_disk) {
-    logger_debug("disk capacity: %llu\n", get_capacity(blkdev->bd_disk) * 512);
-    logger_debug("queue does%s exist\n", (blkdev->bd_disk->queue ? "" : " NOT"));
+  /* Restore the device since the previous use. */
+  device = bdget(devt);
+  if (!device) {
+    logger_debug("device exists, but it does not exist.\n");
+    return 1;
+  }
+
+  if (device->bd_disk) {
+    logger_debug("disk capacity: %llu\n", get_capacity(device->bd_disk) * 512);
+    logger_debug("queue does%s exist\n", (device->bd_disk->queue ? "" : " NOT"));
   } else {
     logger_debug("disk does not exist\n");
   }
@@ -67,16 +77,19 @@ int pstore_init(unsigned long capacity) {
 }
 
 int create_device(unsigned long capacity) {
+  int major;
 
   /* Make sure that the stogare capacity is at least 1MiB. */
   capacity *= 1024 * 1024;
+  if (!capacity) {
+    logger_debug("capacity is %llu\n", capacity);
+    return 1;
+  }
 
   /* Register a block device. */
-  major = register_blkdev(0, DISK_NAME);
+  major = register_blkdev(0, DEVICE_NAME);
   if (!major)
     goto reg_fail;
-
-  logger_debug("device registered with major number: %d\n", major);
 
   /* Allocate a disk. */
   disk = alloc_disk(1);
@@ -88,7 +101,7 @@ int create_device(unsigned long capacity) {
   disk->first_minor = 0;
   disk->fops = &operations;
   disk->private_data = &store;
-  strcpy(disk->disk_name, DISK_NAME);
+  strcpy(disk->disk_name, DEVICE_NAME);
   set_capacity(disk, capacity / 512);
 
   /* Add a request queue to the device. */
@@ -112,7 +125,7 @@ queue_fail:
 
 alloc_fail:
   logger_debug("  alloc failure\n");
-  unregister_blkdev(major, DISK_NAME);
+  unregister_blkdev(major, DEVICE_NAME);
 
 reg_fail:
   logger_debug("  registration failure\n");
@@ -120,12 +133,12 @@ reg_fail:
 }
 
 void pstore_destroy(void) {
-  blk_cleanup_queue(requests);
+  //blk_cleanup_queue(requests);
 
   /* Maybe these are exactly what we DON'T want. */
-  del_gendisk(disk);
-  put_disk(disk);
-  unregister_blkdev(major, DISK_NAME);
+  //del_gendisk(disk);
+  //put_disk(disk);
+  //unregister_blkdev(major, DEVICE_NAME);
 }
 
 void pstore_clear(void) {
@@ -201,4 +214,19 @@ static int pstore_ioctl(struct block_device *device, fmode_t mode,
   }
 
   return 0;
+}
+
+char *stringcat(const char *s1, const char *s2) {
+  size_t length1;
+  size_t length2;
+  char *string;
+
+  length1 = strlen(s1);
+  length2 = strlen(s2) + 1;
+
+  string = (char *) kmalloc(length1 + length2, GFP_KERNEL);
+  memcpy(string, s1, length1);
+  memcpy(string + length1, s2, length2);
+
+  return string;
 }

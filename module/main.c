@@ -13,7 +13,7 @@
 #include "logger.h"
 #include "map.h"
 #include "nlsocket.h"
-#include "pstore.h"
+//#include "pstore.h"
 
 #define SHARED_MAP_HEADER 17
 #ifndef SHARED_MAP_PROTOCOL
@@ -37,7 +37,7 @@ MODULE_PARM_DESC(storage_capacity, "Persistent storage capacity in MiB");
 static void request_handler(pid_t, void *, size_t);
 static void handle_insert_request(pid_t, const message_t);
 static void handle_lookup_request(pid_t, const message_t);
-static int restore_data(void);
+//static int restore_data(void);
 
 static int __init shared_map_init(void) {
 
@@ -50,8 +50,8 @@ static int __init shared_map_init(void) {
   logger_debug("storage_capacity: %d\n", storage_capacity);
 
   /* Try to recover data. */
-  if (pstore_init(storage_capacity) || restore_data())
-    logger_warn("persistent storage is not available\n");
+  //if (pstore_init(storage_capacity) || restore_data())
+    //logger_warn("persistent storage is not available\n");
 
   /* Initialize Netlink. */
   if (nlsocket_init(SHARED_MAP_PROTOCOL, SHARED_MAP_HEADER, request_handler)) {
@@ -139,9 +139,9 @@ void handle_lookup_request(pid_t user, const message_t request) {
 }
 
 /* TODO */
-int restore_data(void) {
-  return 0;
-}
+//int restore_data(void) {
+  //return 0;
+//}
 
 module_init(shared_map_init);
 module_exit(shared_map_exit);
