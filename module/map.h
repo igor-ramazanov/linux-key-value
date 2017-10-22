@@ -21,6 +21,5 @@
 
 int map_init(void);
 void map_destroy(void);
-int map_save(void);
 int map_insert(const char *key, const void *data, size_t length);
 int map_lookup(const char *key, void **data, size_t *length);

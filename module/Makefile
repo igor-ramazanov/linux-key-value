@@ -1,6 +1,6 @@
 obj-m		+=	shared_map.o
 shared_map-y	:=	main.o map.o entry.o nlsocket.o message.o logger.o \
-			pstore.o
+			storage.o file.o
 
 all :
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

@@ -13,12 +13,6 @@
 #include "logger.h"
 #include "map.h"
 
-/*
- * TODO move entry here instead - should be a "memeber class"
- * TODO RCU protection.
- * TODO Persistent storage.
- */
-
 /* "Private member functions". */
 static void map_remove_entry(void *, void *);
 static int map_key_compare(struct rhashtable_compare_arg *, const void *);
@@ -148,9 +142,4 @@ int map_lookup(const char *key, void **value, size_t *length) {
   *length = entry->length;
   read_unlock(&lock);
   return MAP_LOOKUP_SUCCESS;
-}
-
-/* TODO actual code here. */
-int map_save(void) {
-  return 0;
 }
