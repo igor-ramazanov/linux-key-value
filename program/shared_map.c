@@ -102,7 +102,6 @@ int shared_map_lookup(shared_map_t map, const char *key, void **value,
   *value_length = response->value_length;
   *value = memdup(response->value, *value_length);
   error = 0;
-  printf("Looup OK\n");
 
 out:
 

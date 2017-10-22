@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 
   if ((argc == 3) && !strcmp("get", argv[1])) {
     if (!shared_map_lookup(map, argv[2], &value, &length)) {
-      printf("%s => %s\n", argv[2], (char *) value);
+      printf("%s\n", (char *) value);
       free(value);
     } else {
       fprintf(stderr, "Key not found\n");
