@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -8,6 +9,12 @@
 static shared_map_t map;
 
 int main(int argc, char **argv) {
+  struct stat st = {0};
+  char *moddb_dir = "/var/tmp/shared_map";
+  if (stat(moddb_dir, &st) == -1) {
+    mkdir(moddb_dir, 0777);
+  } 
+
   void *value;
   size_t length;
 
