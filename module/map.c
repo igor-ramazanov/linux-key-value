@@ -8,7 +8,6 @@
 #include <linux/rcupdate.h>
 #include <linux/rhashtable.h>
 #include <linux/slab.h>
-#include <linux/spinlock.h>
 #include "entry.h"
 #include "logger.h"
 #include "map.h"
@@ -22,7 +21,6 @@ static u32 map_obj_hash(const void *, u32, u32);
 /*
  * The actual database object.
  */
-static DEFINE_RWLOCK(lock);
 static struct map {
   struct rhashtable table;
   struct rhashtable_params params;
@@ -97,8 +95,6 @@ int map_insert(const char *key, const void *value, size_t length) {
   if (!new_entry)
 	  return MAP_INSERT_FAILED;
 
-  write_lock(&lock);
-
   /* Replace the old mapping or create a new if none exists. */
   old_entry = (entry_t) rhashtable_lookup_fast(&map.table, key, params);
   if (old_entry && !rhashtable_replace_fast(&map.table, &old_entry->head,
@@ -123,23 +119,20 @@ int map_insert(const char *key, const void *value, size_t length) {
   if (err == MAP_INSERT_FAILED)
     entry_free(new_entry);
 
-  write_unlock(&lock);
   return err;
 }
 
 int map_lookup(const char *key, void **value, size_t *length) {
   entry_t entry;
 
-  read_lock(&lock);
+  
 
   entry = rhashtable_lookup_fast(&map.table, key, params);
   if (!entry) {
-    read_unlock(&lock);
     return MAP_LOOKUP_FAILED;
   }
 
   *value = entry->value;
   *length = entry->length;
-  read_unlock(&lock);
   return MAP_LOOKUP_SUCCESS;
 }
