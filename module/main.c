@@ -10,7 +10,7 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/slab.h>
-#include <linux/spinlock.h>
+#include <linux/rwsem.h>
 #include "logger.h"
 #include "map.h"
 #include "nlsocket.h"
@@ -30,7 +30,7 @@ MODULE_AUTHOR("Bastien Harendarczyk<ens17bhk@cs.umu.se>");
 MODULE_VERSION("0.9");
 // @formatter:on
 
-static DEFINE_RWLOCK(lock);
+DEFINE_MUTEX(mut);
 
 static void request_handler(pid_t, void *, size_t);
 static void handle_insert_request(pid_t, const message_t);
@@ -76,14 +76,14 @@ static void request_handler(pid_t user, void *data, size_t size) {
 
   switch (request->type) {
   case MESSAGE_LOOKUP:
-    read_lock(&lock);
+    mutex_lock(&mut);
     handle_lookup_request(user, request);
-    read_unlock(&lock);
+    mutex_unlock(&mut);
     break;
   case MESSAGE_INSERT:
-    write_lock(&lock);
+    mutex_lock(&mut);
     handle_insert_request(user, request);
-    write_unlock(&lock);
+    mutex_unlock(&mut);
     break;
   default:
     break;
