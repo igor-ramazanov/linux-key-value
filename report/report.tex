@@ -62,19 +62,84 @@
   \includegraphics[scale=.6]{percentages1.eps}
 \end{figure}
 
-\begin{tabular}{|l|l|l|l|l|l|l|}
-  \hline
-  & 1 process & 2 processes & 4 processes & 6 processes & 8 processes
-  & 10 processes \\
-  \hline
-  read & 0.926 & 0.897 & 0.928 & 1.316 & 1.861 & 2.363 \\
-  \hline
-  write & 3.082 & 4.223 & 8.076 & 12.371 & 16.568 & 20.563 \\
-  \hline
-  read/write & 4.049 & 5.596 & 9.618 & 15.067 & 20.408 & 25.690 \\
-  \hline
+\begin{table}[h]
+  \begin{tabular}{|l|l|l|l|}
+    \hline
+    \multicolumn{4}{|c|}{\bf Results (all measurements in milliseconds):}\\
+    \hline
+    \hline
+    & {\bf read } & { \bf write } & { \bf read/write } \\
+    \hline
+    { \bf 1 process }    & 0.926 &  3.082 &  4.049 \\
+    \hline
+    { \bf 2 processes }  & 0.897 &  4.223 &  5.596 \\
+    \hline
+    { \bf 4 processes }  & 0.928 &  8.076 &  9.618 \\
+    \hline
+    { \bf 6 processes }  & 1.316 & 12.371 & 15.067 \\
+    \hline
+    { \bf 8 processes }  & 1.861 & 16.568 & 20.408 \\
+    \hline
+    { \bf 10 processes } & 2.363 & 20.563 & 25.690 \\
+    \hline
+  \end{tabular}
+  \caption{We could describe this table}
+  \label{table1}
+\end{table}
 
-\end{tabular}
+\begin{table}[h]
+  \begin{tabular}{|l|l|l|l|}
+    \hline
+    \multicolumn{4}{|c|}{\bf Same measurements caluculated as percentage from previous processes:}\\
+    \hline
+    \hline
+    & {\bf read } & { \bf write } & { \bf read/write } \\
+    \hline
+    { \bf 1 process }    & 100 000 & 100 000 & 100 000 \\
+    \hline
+    { \bf 2 processes }  &  96 868 & 137 005 & 138 195 \\
+    \hline
+    { \bf 4 processes }  & 103 400 & 191 249 & 171 893 \\
+    \hline
+    { \bf 6 processes }  & 141 833 & 153 190 & 156 654 \\
+    \hline
+    { \bf 8 processes }  & 141 458 & 133 924 & 135 444 \\
+    \hline
+    { \bf 10 processes } & 126 967 & 124 116 & 125 884 \\
+    \hline
+  \end{tabular}
+  \caption{We could describe this table}
+  \label{table2}
+\end{table}
+
+ %1 process
+ %2 processes
+ %4 processes
+ %6 processes
+ %8 processes
+ %10 processes
+ %read
+ %100,000
+ %96,868
+ %103,400
+ %141,833
+ %141,458
+ %126,967
+ %write
+ %100,000
+ %137,005
+ %191,249
+ %153,190
+ %133,924
+ %124,116
+ %read/write
+ %100,000
+ %138,195
+ %171,893
+ %156,654
+ %135,444
+ %125,884
+
 
 \section*{User's guide}
 The project consists of two parts - the kernel module and the user space
