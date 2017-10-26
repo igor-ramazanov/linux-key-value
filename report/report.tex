@@ -6,6 +6,7 @@
 \usepackage{fancyhdr}
 \usepackage{datetime}
 \usepackage{titlesec}
+\usepackage{float}
 
 \setlength{\parindent}{0em}
 \setlength{\parskip}{1em}
@@ -49,7 +50,7 @@
 \author{}
 \date{}
 \pagestyle{fancy}
-\fancyhead[R]{\the\year-\twodigit{\the\month}-\twodigit{\the\day}}
+\fancyhead[R]{\footnotesize \the\year-\twodigit{\the\month}-\twodigit{\the\day}}
 \renewcommand{\headrulewidth}{0em}
 
 \begin{document}
@@ -62,20 +63,28 @@
   \vspace{0.0em}
   The project described in this report implements a Linux Kernel Module
   that provides a key-value storage, which can be used by different programs
-  to exchange data and store it between program executions.\vspace{0.7em}\\
+  to exchange data and store it between program executions and module
+  installation.\vspace{0.7em}\\
   \end{tabular}
   \end{center}
 \pagebreak
+\tableofcontents
+\newpage
 \pagenumbering{arabic}
-\section*{Problem description}
-The goal with this project is to write a Linux Kernel Module (LKM) that allows
+\section{Problem description}
+The goal with this project was to write a Linux Kernel Module (LKM) that allowed
 different processes running on the same Linux machine, to access shared data
-through key-value mappings, stored in the kernel. The system must be robust
-enough, that multiple processes, running on multiple processors, can use it
-without accidentally corrupting the stored data. A user space application must
-also be implemented to demonstrate the functionality of the LKM.
+through key-value mappings stored in the kernel. The system had to be robust
+enough to allow multiple processes, running on multiple processors, to use it
+without accidentally corrupting the stored data. Additionally, the module
+needed to store the data in such a way that it could be recovered, even if the
+module was re-installed.
 
-\section*{User's guide}
+A user-space application also had to be implemented, in order  to demonstrate
+the functionality of the LKM. To measure the performance of the module, a
+benchmark program was also necessary.
+
+\section{User's guide}
 The project consists of three parts - the kernel module, a user-space
 test program and a benchmark program to test the performance of the kernel
 module. All files required to build these parts can be found in the gitlab
@@ -114,14 +123,20 @@ Data entered into the module is saved as files in
 and will remain on the hard-disk even after removing the module. Re-installing
 the module will recover data from previous installations.
 
-\section*{Solution}
+After the module has been installed, the benchmark program can be used to
+measure its performance. To run it, go to the benchmark directory and type
+\texttt{make} to compile the program. The actual benchmark is a script
+called \texttt{run.sh} which repeatedly executes the compiled program a certain
+number of times and measures the time taken to do so.
+
+\section{Solution}
 To implement the kernel module, four problems had to be addressed;
 how to internally represent the key-value mappings, how to store the mappings
 between module installations, how to create the mappings in the kernel from
 user-space and how to ensure that the module could be safely used in a
 multi-threaded environment.
 
-\subsection*{Internal data representation}
+\subsection{Internal data representation}
 To store the data in a hashtable seemed like a natural choice, since it would
 be both fast and provide the same functionality required from the module. While
 implementing a new hashtable was always an option, the Linux kernel comes with
@@ -135,7 +150,7 @@ reading and writing of data to \emph{the same} bucket at the same time. This is
 done by deferring updates until no threads are trying to read the data. Care
 must be taken though, to make sure that reads don't happen during the updates.
 
-\subsection*{Synchronization}
+\subsection{Synchronization}
 Three mechanisms to ensure mutual exclusion that are provided by the Linux
 kernel are \texttt{spinlocks}, \texttt{mutexes} and \texttt{semaphores}.
 
@@ -204,7 +219,7 @@ solution uses more CPU operations to put in sleep or to wake up and takes more
 time. But it’s the best solution to avoid deadlock as when a thread is waiting
 it’s put in sleep and allow other another thread to run.
 
-\subsection*{Communication}
+\subsection{Communication}
 Different methods to communicate with the kernel from user-space exist. Among
 these are system calls and writing to special files, such as for example
 character or block devices. A third option is to use sockets to do the
@@ -262,20 +277,46 @@ so the first thing the receiver does once it receives the message is to update
 the pointers to something that makes sense. This is done by a call to
 \texttt{message\_cast}.
 
-\subsection*{Persistant storage}
+\subsection{Persistant storage}
+To store the key-value mappings between module installations, the data was
+saved to files in a directory, created specifically for this module. The path
+to the directory is
+\begin{center}
+\texttt{/var/tmp/shared\_map}
+\end{center}
+Although inadvisable to do so, saving and restoring the data was done from
+the kernel, by using the \emph{virtual file system} (VFS). The reason for this
+was that exploring other options would have been too time consuming.
 
-\section*{Performance analysis}
-\begin{figure}[h!]
-  \centering
-  \includegraphics[scale=.7]{percentages.eps}
-\end{figure}
+Upon installation, the module attempts to access the directory. If unsuccessful,
+the module will not use persistent storage. The directory must be created from
+user-space in order to enable the persistent storage feature. If the module can
+access the directory, the data from the previous installation is loaded into
+memory and programs can go back and use the old mappings again.
 
-\begin{figure}[h!]
-  \centering
-  \includegraphics[scale=.6]{percentages1.eps}
-\end{figure}
+\subsubsection*{Storage format}
+Mapped data is stored on-the-fly. This means that data can be recovered even
+if the module should crash. Because values can be of different sizes, storing
+them inside a single file could result in data fragmentation, if one value
+is replaced by another value of a larger size. Using the file system solved this
+problem by using the key as filename and storing the value inside the file. One
+reason this was possible is that keys in the system must  always be a character
+string.
 
-\begin{table}[h!]
+This solution is bad, primarily because many keys in the module will also result
+in adding many files to the file system.
+
+\section{Performance analysis}
+We benchmarked 3 different metrics with various number of processes:
+\begin{enumerate}
+  \setlength\itemsep{-0.5em}
+  \item Time consumed by 100.000 read operations
+  \item Time consumed by 100.000 write operations
+  \item Time consumed by mixed 100.000 read and 100.000 write operations
+\end{enumerate}
+Number of processes: 1, 2, 4, 6, 8, 10
+
+\begin{table}[H]
   \centering
   \begin{tabular}{|l|l|l|l|}
     \hline
@@ -297,11 +338,11 @@ the pointers to something that makes sense. This is done by a call to
     { \bf 10 processes } & 2.363 & 20.563 & 25.690 \\
     \hline
   \end{tabular}
-  %\caption{We could describe this table}
-  %\label{table1}
+  \caption{Recorded times from one run of the benchmark script.}
+  \label{table1}
 \end{table}
 
-\begin{table}[h!]
+\begin{table}[H]
   \centering
   \begin{tabular}{|l|l|l|l|}
     \hline
@@ -311,36 +352,61 @@ the pointers to something that makes sense. This is done by a call to
     \hline
     & {\bf read } & { \bf write } & { \bf read/write } \\
     \hline
-    { \bf 1 process }    & 100 000 & 100 000 & 100 000 \\
+    { \bf 1 process }    & 100.000 & 100.000 & 100.000 \\
     \hline
-    { \bf 2 processes }  &  96 868 & 137 005 & 138 195 \\
+    { \bf 2 processes }  &  96.868 & 137.005 & 138.195 \\
     \hline
-    { \bf 4 processes }  & 103 400 & 191 249 & 171 893 \\
+    { \bf 4 processes }  & 103.400 & 191.249 & 171.893 \\
     \hline
-    { \bf 6 processes }  & 141 833 & 153 190 & 156 654 \\
+    { \bf 6 processes }  & 141.833 & 153.190 & 156.654 \\
     \hline
-    { \bf 8 processes }  & 141 458 & 133 924 & 135 444 \\
+    { \bf 8 processes }  & 141.458 & 133.924 & 135.444 \\
     \hline
-    { \bf 10 processes } & 126 967 & 124 116 & 125 884 \\
+    { \bf 10 processes } & 126.967 & 124.116 & 125.884 \\
     \hline
   \end{tabular}
-  %\caption{We could describe this table}
-  %\label{table2}
+  \caption{A different way to think of the numbers in Table ~\ref{table1}.}
+  \label{table2}
 \end{table}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=.7]{percentages.eps}
+\end{figure}
 
-\section*{System limitations}
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=.6]{percentages1.eps}
+\end{figure}
 
-\section*{Discussion}
-Developing for the Linux kernel is not an easy task. Much of the information
+From plots we see that read operations much less expensive than write
+operations. Reason of it is in that read operations lookup values only from RAM
+and don’t make any work with storage instead of write operations.
+
+From the last plot we can understand that behaviour of performance of write and
+read/write operations can be explained as O(n) where n - number of processes
+because growth of time of write and read/write operations increasing linearly
+which is quite good in general.
+
+But there are not differences between write and read/write operations what can
+be explained by the reason that we couldn’t use read write semaphore or read
+write spinlock.
+
+\section{Discussion}
+Developing for the Linux kernel was not an easy task. Much of the information
 available online is outdated and the kernel in many places, is poorly
 documented. Most of the time spent on the project, was dedicated to sifting
 through kernel code, trying to to figure out what the functions do, which
-functions to use and in what contexts they are safe to use.
+functions to use and in what contexts they were safe to use.
 
-Debugging is also difficult, in part because many tools run only in user space.
-Another complicating factor, is the fact that the operating system can freeze
-when there is a bug in the code and that error print-outs are lost when
-rebooting.
+Debugging was also difficult, in part because many debug tools run only in
+user-space. Another complicating factor, was the fact that the operating
+system could freeze when there was a bug in the code and that the error
+print-outs were lost when rebooting.
+
+Overall though, this was a very interesting project. It gave lots of insights
+into the Linux kernel and forced you to get into the habit of reading and
+trying to understand code, written by other people, perhaps less inclined to
+properly document their work.
 
 \end{document}

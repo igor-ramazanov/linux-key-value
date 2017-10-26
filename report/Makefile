@@ -5,5 +5,6 @@ clean :
 
 report.pdf : report.tex
 	pslatex report.tex
+	pslatex report.tex
 	dvips report.dvi
 	ps2pdf report.ps report.pdf
