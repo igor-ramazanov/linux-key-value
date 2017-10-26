@@ -17,7 +17,7 @@
 
 \newcommand{\course}{Operating Systems, 5dv171}
 \newcommand{\semester}{Fall 2017}
-\newcommand{\assignment}{Project - Linux Kernel Module}
+\newcommand{\assignment}{Project: Writing a Linux kernel module}
 \newcommand{\authors}{
   Igor Ramazanov, ens17irv@cs.umu.se\\
   Erik Ramos, c03ers@cs.umu.se\\
@@ -31,9 +31,10 @@
 \title{
   \pagenumbering{gobble}
   \begin{center}
+  \vspace{4em}
   {\LARGE \bf \course{}, \semester}\\
   {\Large \bf \assignment}\\
-  \vspace{6em}
+  \vspace{4em}
   {\normalsize
   {\bf Teacher}\\
   {\lecturer}\vspace{1em}\\
@@ -44,12 +45,13 @@
   {\bf Gitlab repository}\vspace{-1em}\\
   {\codebase}}
   \end{center}
-  \vspace{3em}
+  \vspace{2em}
 }
 
 \author{}
 \date{}
 \pagestyle{fancy}
+\fancyhead{}
 \fancyhead[R]{\footnotesize \the\year-\twodigit{\the\month}-\twodigit{\the\day}}
 \renewcommand{\headrulewidth}{0em}
 
@@ -61,10 +63,10 @@
   \begin{tabular}{ p{25em} }
   \hline
   \vspace{0.0em}
-  The project described in this report implements a Linux Kernel Module
-  that provides a key-value storage, which can be used by different programs
+  The project described in this report implements a Linux kernel module
+  which provides a key-value storage, that can be used by different programs
   to exchange data and store it between program executions and module
-  installation.\vspace{0.7em}\\
+  installations.\vspace{0.7em}\\
   \end{tabular}
   \end{center}
 \pagebreak
@@ -227,12 +229,12 @@ communication.
 
 System calls requires recompilation of the kernel which runs counter to what
 modules were designed to do. Writing to special files would solve the problem,
-but seemed like a bad idea, because they usually represent an acutal, physical
+but seemed like a bad idea, because they usually represent an actual, physical
 device. For this reason, sockets were chosen to do the communication.
 
 The sockets (called \texttt{Netlink sockets}) work much like regular sockets
 used for communication over the Internet. Using them requires the definition
-of a comunication protocol.
+of a communication protocol.
 
 \subsubsection*{The communication protocol}
 Communication is initiated by a request from the user-space program and
@@ -241,12 +243,12 @@ regardless of the outcome, the kernel responds in some way.
 The requests available to the user are to create a new mapping and to look up
 a value associated with an existing mapping.
 
-For lookups, if a key \emph{does not} exist, the kernel will respond with a
+For look-ups, if a key \emph{does not} exist, the kernel will respond with a
 message indicating this. If the key \emph{does} exist, the mapped value is
 returned. For insertions, the kernel may return one of two messages; one
 indicating that a new mapping was created and another to indicate that an old
 mapping was updated with a new value. An additional message to indicate errors
-of some other kind (such as for example out-of-memory) is also avaible.
+of some other kind (such as for example out-of-memory) is also available.
 
 \subsubsection*{The message structure}
 Communication between user-space and the kernel is done by sending message
@@ -272,12 +274,12 @@ respectively.
 One consequence of this method is that the length of the data sent is not
 \texttt{sizeof(struct message)}, but rather a value that can be extracted by a
 function called \texttt{message\_length}. Another is that the pointers received
-on the other end of the netlink connection will not make sense to the receiver,
+on the other end of the Netlink connection will not make sense to the receiver,
 so the first thing the receiver does once it receives the message is to update
 the pointers to something that makes sense. This is done by a call to
 \texttt{message\_cast}.
 
-\subsection{Persistant storage}
+\subsection{Persistent storage}
 To store the key-value mappings between module installations, the data was
 saved to files in a directory, created specifically for this module. The path
 to the directory is
@@ -346,7 +348,7 @@ Number of processes: 1, 2, 4, 6, 8, 10
   \centering
   \begin{tabular}{|l|l|l|l|}
     \hline
-    \multicolumn{4}{|c|}{\bf Same measurements caluculated as percentage from
+    \multicolumn{4}{|c|}{\bf Same measurements calculated as percentage from
       previous processes:}\\
     \hline
     \hline
@@ -380,7 +382,7 @@ Number of processes: 1, 2, 4, 6, 8, 10
 \end{figure}
 
 From plots we see that read operations much less expensive than write
-operations. Reason of it is in that read operations lookup values only from RAM
+operations. Reason of it is in that read operations look-up values only from RAM
 and don’t make any work with storage instead of write operations.
 
 From the last plot we can understand that behaviour of performance of write and
