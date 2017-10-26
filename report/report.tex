@@ -5,10 +5,18 @@
 \usepackage{url}
 \usepackage{fancyhdr}
 \usepackage{datetime}
+\usepackage{titlesec}
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{1em}
+
+\titlespacing\section{0pt}{1.5em}{-0.5em}
+\titlespacing\subsection{0pt}{1.0em}{-0.5em}
+\titlespacing\subsubsection{0pt}{0.5em}{-1.0em}
 
 \newcommand{\course}{Operating Systems, 5dv171}
 \newcommand{\semester}{Fall 2017}
-\newcommand{\assignment}{Project Linux Kernel Module - part 1}
+\newcommand{\assignment}{Project - Linux Kernel Module}
 \newcommand{\authors}{
   Igor Ramazanov, ens17irv@cs.umu.se\\
   Erik Ramos, c03ers@cs.umu.se\\
@@ -19,11 +27,7 @@
 \newcommand{\assistants}{Adam Dahlgren}
 \newcommand{\codebase}{https://git.cs.umu.se/c03ers/5dv171-project}
 
-\setlength{\parindent}{0em}
-\setlength{\parskip}{1em}
-
 \title{
-  \vspace{4em}
   \pagenumbering{gobble}
   \begin{center}
   {\LARGE \bf \course{}, \semester}\\
@@ -39,6 +43,7 @@
   {\bf Gitlab repository}\vspace{-1em}\\
   {\codebase}}
   \end{center}
+  \vspace{3em}
 }
 
 \author{}
@@ -49,20 +54,229 @@
 
 \begin{document}
 \maketitle
+  \begin{center}
+  {\bf Abstract }\\
+  \vspace{0.5em}
+  \begin{tabular}{ p{25em} }
+  \hline
+  \vspace{0.0em}
+  The project described in this report implements a Linux Kernel Module
+  that provides a key-value storage, which can be used by different programs
+  to exchange data and store it between program executions.\vspace{0.7em}\\
+  \end{tabular}
+  \end{center}
 \pagebreak
 \pagenumbering{arabic}
+\section*{Problem description}
+The goal with this project is to write a Linux Kernel Module (LKM) that allows
+different processes running on the same Linux machine, to access shared data
+through key-value mappings, stored in the kernel. The system must be robust
+enough, that multiple processes, running on multiple processors, can use it
+without accidentally corrupting the stored data. A user space application must
+also be implemented to demonstrate the functionality of the LKM.
 
-\begin{figure}
+\section*{User's guide}
+The project consists of three parts - the kernel module, a user-space
+test program and a benchmark program to test the performance of the kernel
+module. All files required to build these parts can be found in the gitlab
+repository.
+
+To download the project, begin by cloning the repository typing the following in
+a terminal:
+\begin{center}
+{\tt git clone \codebase}
+\end{center}
+
+Each part is assigned to a separate directory; \texttt{module} for the kernel
+module, \texttt{program} for the user-space program and \texttt{benchmark}
+for the benchmark program. Each of these directories contain their own
+make-files, so building any of the parts can be done by typing
+\texttt{make} in the terminal, from the respective directory.
+
+Once built, a super-user may install the module by typing 
+{\tt insmod shared\_map.ko} in the terminal, while in the module directory.
+Running {\tt rmmod shared\_map } will remove the module.
+
+The test program \emph{test}, can be used both for putting data
+into the module and to retrieve data from it. Inserting data is done like this:
+\begin{center}
+{\tt ./test set key value}
+\end{center}
+To retrieve data from the module using the test program, instead write this:
+\begin{center}
+{\tt ./test get key}
+\end{center}
+
+Data entered into the module is saved as files in
+\begin{center}
+{\texttt{/var/tmp/shared\_map/}}
+\end{center}
+and will remain on the hard-disk even after removing the module. Re-installing
+the module will recover data from previous installations.
+
+\section*{Solution}
+To implement the kernel module, four problems had to be addressed;
+how to internally represent the key-value mappings, how to store the mappings
+between module installations, how to create the mappings in the kernel from
+user-space and how to ensure that the module could be safely used in a
+multi-threaded environment.
+
+\subsection*{Internal data representation}
+To store the data in a hashtable seemed like a natural choice, since it would
+be both fast and provide the same functionality required from the module. While
+implementing a new hashtable was always an option, the Linux kernel comes with
+its own datatypes. The datatype chosen to represent the mappings ended up being
+\texttt{rhashtable}.
+
+The \texttt{rhashtable} provides per-bucket locking, which allows processes
+on different processors to modify the datatype in parallel, as long as they are
+working in different buckets. Additionally, RCU synchronization allows both
+reading and writing of data to \emph{the same} bucket at the same time. This is
+done by deferring updates until no threads are trying to read the data. Care
+must be taken though, to make sure that reads don't happen during the updates.
+
+\subsection*{Synchronization}
+Three mechanisms to ensure mutual exclusion that are provided by the Linux
+kernel are \texttt{spinlocks}, \texttt{mutexes} and \texttt{semaphores}.
+
+\subsubsection*{Spinlock}
+A spinlock is a lock. If a thread is trying to acquire it, it has to wait in a
+loop while repeatedly checking if the lock is available.
+
+When a thread tries to lock a spinlock and it does not succeed, it will
+continuously re-try locking it, until it finally succeeds; thus it will not
+allow another thread to take its place.
+
+\subsubsection*{Mutex}
+A mutex is a synchronization primitive used to avoid shared resources to be used
+at the same time. The mutex has two states: lock or unlock.
+
+When a thread tries to lock a mutex and it does not succeed, because the mutex
+is already locked, it will go to sleep, immediately allowing another thread to
+run. It will continue to sleep until being woken up, which will be the case
+once the mutex is being unlocked by whatever thread was holding the lock before.
+Putting threads to sleep and waking them up again are both rather expensive
+operations, they'll need quite a lot of CPU instructions and thus also take some
+time.
+
+\subsubsection*{Sempahores}
+A Semaphore is a variable used to control access to a common resource. A
+semaphore is a data structure that is maintained by the operating system and
+contains:
+\begin{itemize}
+  \setlength\itemsep{-0.5em}
+  \item an integer that stores the value, positive or zero, of the semaphore.
+  \item a queue that contains pointers to threads that are stuck waiting on this
+        semaphore.
+\end{itemize}
+When initialized to 1, a semaphore can be used in the same way as a mutex.
+When a thread gets access to the the semaphore, the semaphore counter will
+decrease. 
+
+When a thread free the semaphore, the semaphore counter will increase.
+A thread, that is waiting for the semaphore, will go to sleep as in the Mutex
+case.
+
+In Linux, there is a special kind of semaphore called: reader/writer semaphore.
+It allows multiple readers into the critical section but only one writer at any
+given time.
+
+\subsubsection*{Conclusion}
+After discussing these solutions, we decided to implement spinlock to
+synchronize our threads. This solution allow us to minimize the amount of CPU
+instructions.
+
+When we started to benchmark our system with several processes, we noticed that
+our system was freezing when several write operations were running.
+
+After considering this problem, we concluded that there was deadlock. That
+deadlock was due to the policy of spinlock. When a thread is waiting for the
+spinlock to be unlock, it’s blocked in loop and ask at each iteration of the
+loop. So any other thread can run because the previous thread is still running.
+
+So we moved to another solution. First we tried to implement read/write
+semaphores, because those semaphores are designed for those operations. So we
+set up this solution. But during the compilation there was an error. We tried
+to find the cause of this error but we didn’t succeed.
+
+Therefore, we decided to use mutex. And now it works. We assume that this
+solution uses more CPU operations to put in sleep or to wake up and takes more
+time. But it’s the best solution to avoid deadlock as when a thread is waiting
+it’s put in sleep and allow other another thread to run.
+
+\subsection*{Communication}
+Different methods to communicate with the kernel from user-space exist. Among
+these are system calls and writing to special files, such as for example
+character or block devices. A third option is to use sockets to do the
+communication.
+
+System calls requires recompilation of the kernel which runs counter to what
+modules were designed to do. Writing to special files would solve the problem,
+but seemed like a bad idea, because they usually represent an acutal, physical
+device. For this reason, sockets were chosen to do the communication.
+
+The sockets (called \texttt{Netlink sockets}) work much like regular sockets
+used for communication over the Internet. Using them requires the definition
+of a comunication protocol.
+
+\subsubsection*{The communication protocol}
+Communication is initiated by a request from the user-space program and
+regardless of the outcome, the kernel responds in some way.
+
+The requests available to the user are to create a new mapping and to look up
+a value associated with an existing mapping.
+
+For lookups, if a key \emph{does not} exist, the kernel will respond with a
+message indicating this. If the key \emph{does} exist, the mapped value is
+returned. For insertions, the kernel may return one of two messages; one
+indicating that a new mapping was created and another to indicate that an old
+mapping was updated with a new value. An additional message to indicate errors
+of some other kind (such as for example out-of-memory) is also avaible.
+
+\subsubsection*{The message structure}
+Communication between user-space and the kernel is done by sending message
+structures over Netlink. The \texttt{Message} structure has the five fields;
+\texttt{type}, \texttt{key\_length}, \texttt{value\_length}, \texttt{key} and
+\texttt{value}. \texttt{type}, \texttt{key\_length} and \texttt{value\_length}
+are all integers and can easily be passed back and forth between kernel and
+user-space, but since both keys and values can be arbitrarily long, they must
+be dynamically allocated. Passing pointers from user-space to the kernel is
+possible, but the converse is not. Because of this, the message must be
+serialized before transmission. This process is done by special message building
+functions.
+
+To preserve the illusion of sending the message as a structure with pointers,
+some (perhaps overly so) clever pointer magic is done. When a message is
+created by one of the builder functions, the size of the memory allocated is
+that of the message structure itself plus the combined size of the key and
+value. The key is copied into the area directly after the message structure
+fields and the value is copied directly after it. The key- and value pointers
+are then set to point into the data region where the key and value are stored
+respectively.
+
+One consequence of this method is that the length of the data sent is not
+\texttt{sizeof(struct message)}, but rather a value that can be extracted by a
+function called \texttt{message\_length}. Another is that the pointers received
+on the other end of the netlink connection will not make sense to the receiver,
+so the first thing the receiver does once it receives the message is to update
+the pointers to something that makes sense. This is done by a call to
+\texttt{message\_cast}.
+
+\subsection*{Persistant storage}
+
+\section*{Performance analysis}
+\begin{figure}[h!]
   \centering
   \includegraphics[scale=.7]{percentages.eps}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h!]
   \centering
   \includegraphics[scale=.6]{percentages1.eps}
 \end{figure}
 
-\begin{table}[h]
+\begin{table}[h!]
+  \centering
   \begin{tabular}{|l|l|l|l|}
     \hline
     \multicolumn{4}{|c|}{\bf Results (all measurements in milliseconds):}\\
@@ -83,14 +297,16 @@
     { \bf 10 processes } & 2.363 & 20.563 & 25.690 \\
     \hline
   \end{tabular}
-  \caption{We could describe this table}
-  \label{table1}
+  %\caption{We could describe this table}
+  %\label{table1}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[h!]
+  \centering
   \begin{tabular}{|l|l|l|l|}
     \hline
-    \multicolumn{4}{|c|}{\bf Same measurements caluculated as percentage from previous processes:}\\
+    \multicolumn{4}{|c|}{\bf Same measurements caluculated as percentage from
+      previous processes:}\\
     \hline
     \hline
     & {\bf read } & { \bf write } & { \bf read/write } \\
@@ -108,107 +324,12 @@
     { \bf 10 processes } & 126 967 & 124 116 & 125 884 \\
     \hline
   \end{tabular}
-  \caption{We could describe this table}
-  \label{table2}
+  %\caption{We could describe this table}
+  %\label{table2}
 \end{table}
 
- %1 process
- %2 processes
- %4 processes
- %6 processes
- %8 processes
- %10 processes
- %read
- %100,000
- %96,868
- %103,400
- %141,833
- %141,458
- %126,967
- %write
- %100,000
- %137,005
- %191,249
- %153,190
- %133,924
- %124,116
- %read/write
- %100,000
- %138,195
- %171,893
- %156,654
- %135,444
- %125,884
 
-
-\section*{User's guide}
-The project consists of two parts - the kernel module and the user space
-test program. All files required to build both parts can be found in the gitlab
-repository.
-
-To build the project, begin by cloning the repository typing the following in
-a terminal:
-\begin{center}
-{\tt git clone \codebase}
-\end{center}
-In the project directory there are two sub directories; module and program.
-Both of these directories have a Makefile for building. Simply enter the
-directories and type {\tt make} in the terminal.
-
-Once built, a super-user may install the module by typing 
-{\tt insmod moddb.ko} in the terminal and later {\tt rmmod moddb}
-to uninstall it.
-
-The test program \emph{test}, can be used both for putting data
-into the module and to retrieve data from it. Inserting data is done like this:
-\begin{center}
-{\tt ./test set key value}
-\end{center}
-To retrieve data from the module using the test program, instead write this:
-\begin{center}
-{\tt ./test get key}
-\end{center}
-
-\section*{Problem description}
-The goal with this project is to write a Linux Kernel Module (LKM) that allows
-different processes running on the same Linux machine, to access shared data
-through key-value mappings, stored in the kernel. The system must be robust
-enough, that multiple processes, running on multiple processors, can use it
-without accidentally corrupting the stored data. A user space application must
-also be implemented to demonstrate the functionality of the LKM.
-
-This first part of the project report describes how the LKM represents these
-mappings, how the user space applications communicate with the module and
-what considerations went into the decisions.\pagebreak
-
-\section*{Solution}
-The following three methods of user to kernel space communication were
-considered for this project:
-\begin{enumerate}
-  \setlength\itemsep{0em}
-  \item Device files
-  \item Proc files
-  \item Netlink sockets
-\end{enumerate}
-Using one of the file systems to solve the problem was appealing, primarily
-because much of the heavy lifting would be done by system calls already
-available in Linux. However, since device files usually represent actual,
-physical devices and proc files are meant to contain information about
-processes, none of these seemed like a really good fit.
-
-Because the kernel module would provide user space applications with a service,
-in much the same way that an Internet server would to its clients, Netlink
-sockets seemed like a much better fit. They would however, turn out to be much
-more complicated to set up and use.
-
-When it came to storing the key-value pairs in the module, there were two
-options available; to make a new hashtable datatype, or to find an existing
-one to use. Not a difficult choice.
-
-A hashtable datatype called \emph{rhashtable} is provided by the
-Linux kernel and offers all the basic hashtable functionality required
-at a this stage of the project. It is also designed to run well in
-multi-threaded environments, which will come in handy later in the project.
+\section*{System limitations}
 
 \section*{Discussion}
 Developing for the Linux kernel is not an easy task. Much of the information
@@ -221,4 +342,5 @@ Debugging is also difficult, in part because many tools run only in user space.
 Another complicating factor, is the fact that the operating system can freeze
 when there is a bug in the code and that error print-outs are lost when
 rebooting.
+
 \end{document}
